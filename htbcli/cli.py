@@ -8,6 +8,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich import print as rprint
 
+from . import __version__
 from .config import Config
 from .swagger_parser import SwaggerParser
 from .modules import (
@@ -20,7 +21,7 @@ from .modules import (
 console = Console()
 
 @click.group()
-@click.version_option(version="1.0.0", prog_name="HTB CLI")
+@click.version_option(version=__version__, prog_name="HTB CLI")
 def cli():
     """
     HTB CLI - A command-line interface for HackTheBox API
@@ -58,7 +59,8 @@ def info():
     try:
         console.print(Panel.fit(
             "[bold green]HTB CLI Information[/bold green]\n"
-            f"API Base URL: {Config.BASE_URL}\n"
+            f"API v4 Base URL: {Config.BASE_URL_V4}\n"
+            f"API v5 Base URL: {Config.BASE_URL_V5}\n"
             f"API Token: {'[green]Set[/green]' if Config.API_TOKEN else '[red]Not Set[/red]'}\n"
             f"Default Per Page: {Config.DEFAULT_PER_PAGE}\n"
             f"Max Per Page: {Config.MAX_PER_PAGE}",
