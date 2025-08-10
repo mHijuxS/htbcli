@@ -59,10 +59,6 @@ HTB_TOKEN=your_token_here
 ### 3. Verify Configuration
 
 ```bash
-# If using uv
-.venv/bin/htbcli info
-
-# Or if installed globally
 htbcli info
 ```
 
