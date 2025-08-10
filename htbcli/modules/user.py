@@ -324,131 +324,236 @@ def bloods(user_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
-def dashboard():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def dashboard(responses, option):
     """Get user dashboard"""
     try:
         api_client = HTBAPIClient()
         user_module = UserModule(api_client)
         result = user_module.get_user_dashboard()
         
-        if result and 'data' in result:
-            dashboard_data = result['data']
-            console.print(Panel.fit(
-                f"[bold green]User Dashboard[/bold green]\n"
-                f"Rank: {dashboard_data.get('rank', 'N/A') or 'N/A'}\n"
-                f"Points: {dashboard_data.get('points', 'N/A') or 'N/A'}\n"
-                f"Machines Owned: {dashboard_data.get('machines_owned', 'N/A') or 'N/A'}\n"
-                f"Challenges Solved: {dashboard_data.get('challenges_solved', 'N/A') or 'N/A'}",
-                title="Dashboard"
-            ))
+        if result:
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All User Dashboard Data[/bold green]\n"
+                    f"{result}",
+                    title="User Dashboard"
+                ))
+            elif option:
+                # Show specific fields
+                info_text = f"[bold green]User Dashboard[/bold green]\n"
+                for field in option:
+                    value = result.get(field, 'N/A')
+                    info_text += f"{field}: {value}\n"
+                console.print(Panel.fit(info_text, title="User Dashboard"))
+            else:
+                # Show default fields
+                if 'dashboard_players' in result:
+                    dashboard_data = result['dashboard_players']
+                    console.print(Panel.fit(
+                        f"[bold green]User Dashboard[/bold green]\n"
+                        f"Online Players: {dashboard_data.get('online_players', 'N/A') or 'N/A'}",
+                        title="Dashboard"
+                    ))
+                else:
+                    console.print(Panel.fit(
+                        f"[bold green]User Dashboard[/bold green]\n"
+                        f"Data available: Yes",
+                        title="Dashboard"
+                    ))
         else:
             console.print("[yellow]No dashboard data found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
-def followers():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def followers(responses, option):
     """Get user followers"""
     try:
         api_client = HTBAPIClient()
         user_module = UserModule(api_client)
         result = user_module.get_user_followers()
         
-        if result and 'data' in result:
-            followers_data = result['data']
+        if result and 'info' in result:
+            followers_data = result['info']
             
-            table = Table(title="User Followers")
-            table.add_column("Username", style="cyan")
-            table.add_column("Rank", style="green")
-            table.add_column("Points", style="yellow")
-            table.add_column("Country", style="magenta")
-            
-            for follower in followers_data:
-                table.add_row(
-                    str(follower.get('name', 'N/A') or 'N/A'),
-                    str(follower.get('rank', 'N/A') or 'N/A'),
-                    str(follower.get('points', 'N/A') or 'N/A'),
-                    str(follower.get('country_name', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All User Followers Data[/bold green]\n"
+                    f"{result}",
+                    title="User Followers"
+                ))
+            elif option:
+                # Show specific fields
+                info_text = f"[bold green]User Followers[/bold green]\n"
+                for i, follower in enumerate(followers_data):
+                    info_text += f"Follower {i+1}:\n"
+                    for field in option:
+                        value = follower.get(field, 'N/A')
+                        info_text += f"  {field}: {value}\n"
+                console.print(Panel.fit(info_text, title="User Followers"))
+            else:
+                # Show default fields
+                if len(followers_data) > 0:
+                    table = Table(title="User Followers")
+                    table.add_column("ID", style="cyan")
+                    
+                    for follower in followers_data:
+                        table.add_row(
+                            str(follower.get('id', 'N/A') or 'N/A')
+                        )
+                    
+                    console.print(table)
+                else:
+                    console.print(Panel.fit(
+                        f"[bold green]User Followers[/bold green]\n"
+                        f"Count: {len(followers_data)}",
+                        title="User Followers"
+                    ))
         else:
             console.print("[yellow]No followers found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
-def summary():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def summary(responses, option):
     """Get user profile summary"""
     try:
         api_client = HTBAPIClient()
         user_module = UserModule(api_client)
         result = user_module.get_user_profile_summary()
         
-        if result and 'data' in result:
-            summary_data = result['data']
-            console.print(Panel.fit(
-                f"[bold green]User Summary[/bold green]\n"
-                f"Username: {summary_data.get('name', 'N/A') or 'N/A'}\n"
-                f"Rank: {summary_data.get('rank', 'N/A') or 'N/A'}\n"
-                f"Points: {summary_data.get('points', 'N/A') or 'N/A'}\n"
-                f"Country: {summary_data.get('country_name', 'N/A') or 'N/A'}\n"
-                f"Member Since: {summary_data.get('member_since', 'N/A') or 'N/A'}",
-                title="Profile Summary"
-            ))
+        if result and 'userStats' in result:
+            summary_data = result['userStats']
+            
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All User Summary Data[/bold green]\n"
+                    f"{result}",
+                    title="User Summary"
+                ))
+            elif option:
+                # Show specific fields
+                info_text = f"[bold green]User Summary[/bold green]\n"
+                for field in option:
+                    value = summary_data.get(field, 'N/A')
+                    info_text += f"{field}: {value}\n"
+                console.print(Panel.fit(info_text, title="User Summary"))
+            else:
+                # Show default fields
+                team_name = summary_data.get('team', {}).get('name', 'N/A') if summary_data.get('team') else 'N/A'
+                console.print(Panel.fit(
+                    f"[bold green]User Summary[/bold green]\n"
+                    f"Username: {summary_data.get('name', 'N/A') or 'N/A'}\n"
+                    f"Rank: {summary_data.get('rank', 'N/A') or 'N/A'}\n"
+                    f"Points: {summary_data.get('points', 'N/A') or 'N/A'}\n"
+                    f"Team: {team_name}\n"
+                    f"System Owns: {summary_data.get('system_owns', 'N/A') or 'N/A'}\n"
+                    f"User Owns: {summary_data.get('user_owns', 'N/A') or 'N/A'}\n"
+                    f"Respects: {summary_data.get('respects', 'N/A') or 'N/A'}\n"
+                    f"Ranking: {summary_data.get('ranking', 'N/A') or 'N/A'}",
+                    title="Profile Summary"
+                ))
         else:
             console.print("[yellow]No summary found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
-def settings():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def settings(responses, option):
     """Get user settings"""
     try:
         api_client = HTBAPIClient()
         user_module = UserModule(api_client)
         result = user_module.get_user_settings()
         
-        if result and 'data' in result:
-            settings_data = result['data']
-            console.print(Panel.fit(
-                f"[bold green]User Settings[/bold green]\n"
-                f"Email: {settings_data.get('email', 'N/A') or 'N/A'}\n"
-                f"Timezone: {settings_data.get('timezone', 'N/A') or 'N/A'}\n"
-                f"Language: {settings_data.get('language', 'N/A') or 'N/A'}",
-                title="Settings"
-            ))
+        if result:
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All User Settings Data[/bold green]\n"
+                    f"{result}",
+                    title="User Settings"
+                ))
+            elif option:
+                # Show specific fields
+                info_text = f"[bold green]User Settings[/bold green]\n"
+                for field in option:
+                    value = result.get(field, 'N/A')
+                    info_text += f"{field}: {value}\n"
+                console.print(Panel.fit(info_text, title="User Settings"))
+            else:
+                # Show default fields
+                console.print(Panel.fit(
+                    f"[bold green]User Settings[/bold green]\n"
+                    f"Email: {result.get('email', 'N/A') or 'N/A'}\n"
+                    f"Public: {result.get('public', 'N/A') or 'N/A'}\n"
+                    f"Name Change Delay: {result.get('name_change_delay', 'N/A') or 'N/A'}\n"
+                    f"Hide Machine Tags: {result.get('hide_machine_tags', 'N/A') or 'N/A'}",
+                    title="User Settings"
+                ))
         else:
             console.print("[yellow]No settings found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
-def tracks():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def tracks(responses, option):
     """Get user tracks"""
     try:
         api_client = HTBAPIClient()
         user_module = UserModule(api_client)
         result = user_module.get_user_tracks()
         
-        if result and 'data' in result:
-            tracks_data = result['data']
-            
-            table = Table(title="User Tracks")
-            table.add_column("Name", style="cyan")
-            table.add_column("Description", style="green")
-            table.add_column("Progress", style="yellow")
-            table.add_column("Enrolled", style="magenta")
-            
-            for track in tracks_data:
-                table.add_row(
-                    str(track.get('name', 'N/A') or 'N/A'),
-                    str(track.get('description', 'N/A') or 'N/A'),
-                    str(track.get('progress', 'N/A') or 'N/A'),
-                    str(track.get('enrolled', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+        if result:
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All User Tracks Data[/bold green]\n"
+                    f"{result}",
+                    title="User Tracks"
+                ))
+            elif option:
+                # Show specific fields
+                info_text = f"[bold green]User Tracks[/bold green]\n"
+                for i, track in enumerate(result):
+                    info_text += f"Track {i+1}:\n"
+                    for field in option:
+                        value = track.get(field, 'N/A')
+                        info_text += f"  {field}: {value}\n"
+                console.print(Panel.fit(info_text, title="User Tracks"))
+            else:
+                # Show default fields
+                if isinstance(result, list) and len(result) > 0:
+                    table = Table(title="User Tracks")
+                    table.add_column("ID", style="cyan")
+                    table.add_column("Complete", style="green")
+                    
+                    for track in result:
+                        table.add_row(
+                            str(track.get('id', 'N/A') or 'N/A'),
+                            str(track.get('complete', 'N/A') or 'N/A')
+                        )
+                    
+                    console.print(table)
+                else:
+                    console.print(Panel.fit(
+                        f"[bold green]User Tracks[/bold green]\n"
+                        f"Count: {len(result) if isinstance(result, list) else 0}",
+                        title="User Tracks"
+                    ))
         else:
             console.print("[yellow]No tracks found[/yellow]")
     except Exception as e:
@@ -583,31 +688,58 @@ def anonymized_id():
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
-def apptoken_list():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def apptoken_list(responses, option):
     """Get user app tokens list"""
     try:
         api_client = HTBAPIClient()
         user_module = UserModule(api_client)
         result = user_module.get_user_apptoken_list()
         
-        if result and 'data' in result:
-            tokens_data = result['data']
+        if result and 'tokens' in result:
+            tokens_data = result['tokens']
             
-            table = Table(title="App Tokens")
-            table.add_column("ID", style="cyan")
-            table.add_column("Name", style="green")
-            table.add_column("Created", style="yellow")
-            table.add_column("Last Used", style="magenta")
-            
-            for token in tokens_data:
-                table.add_row(
-                    str(token.get('id', 'N/A') or 'N/A'),
-                    str(token.get('name', 'N/A') or 'N/A'),
-                    str(token.get('created_at', 'N/A') or 'N/A'),
-                    str(token.get('last_used_at', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All App Tokens Data[/bold green]\n"
+                    f"{result}",
+                    title="App Tokens"
+                ))
+            elif option:
+                # Show specific fields
+                info_text = f"[bold green]App Tokens[/bold green]\n"
+                for i, token in enumerate(tokens_data):
+                    info_text += f"Token {i+1}:\n"
+                    for field in option:
+                        value = token.get(field, 'N/A')
+                        info_text += f"  {field}: {value}\n"
+                console.print(Panel.fit(info_text, title="App Tokens"))
+            else:
+                # Show default fields
+                if len(tokens_data) > 0:
+                    table = Table(title="App Tokens")
+                    table.add_column("Name", style="cyan")
+                    table.add_column("Created", style="green")
+                    table.add_column("Expires", style="yellow")
+                    table.add_column("Last Seen", style="magenta")
+                    
+                    for token in tokens_data:
+                        table.add_row(
+                            str(token.get('name', 'N/A') or 'N/A'),
+                            str(token.get('created_at', 'N/A') or 'N/A'),
+                            str(token.get('expires_at', 'N/A') or 'N/A'),
+                            str(token.get('last_seen', 'N/A') or 'N/A')
+                        )
+                    
+                    console.print(table)
+                else:
+                    console.print(Panel.fit(
+                        f"[bold green]App Tokens[/bold green]\n"
+                        f"Count: {len(tokens_data)}",
+                        title="App Tokens"
+                    ))
         else:
             console.print("[yellow]No app tokens found[/yellow]")
     except Exception as e:
