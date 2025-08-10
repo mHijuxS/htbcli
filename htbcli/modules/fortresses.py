@@ -18,29 +18,25 @@ class FortressesModule:
     def __init__(self, api_client: HTBAPIClient):
         self.api = api_client
     
-    def get_fortress_activity(self, fortress_id: int) -> Dict[str, Any]:
-        """Get fortress activity"""
-        return self.api.get(f"/fortress/activity/{fortress_id}")
-    
-    def get_fortress_info(self, fortress_slug: str) -> Dict[str, Any]:
-        """Get fortress info by slug"""
-        return self.api.get(f"/fortress/info/{fortress_slug}")
-    
-    def get_fortress_list(self, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
+    def get_fortresses(self) -> Dict[str, Any]:
         """Get list of fortresses"""
-        params = {
-            "page": page,
-            "per_page": per_page
-        }
-        return self.api.get("/fortress/list", params=params)
+        return self.api.get("/fortresses")
     
-    def get_fortress_recommended(self) -> Dict[str, Any]:
-        """Get recommended fortresses"""
-        return self.api.get("/fortress/recommended")
+    def get_fortress(self, fortress_id: int) -> Dict[str, Any]:
+        """Get fortress profile by ID"""
+        return self.api.get(f"/fortress/{fortress_id}")
     
-    def get_fortress_writeup(self, fortress_id: int) -> Dict[str, Any]:
-        """Get fortress writeup"""
-        return self.api.get(f"/fortress/{fortress_id}/writeup")
+    def submit_fortress_flag(self, fortress_id: int, flag_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Submit flag for fortress"""
+        return self.api.post(f"/fortress/{fortress_id}/flag", json_data=flag_data)
+    
+    def get_fortress_flags(self, fortress_id: int) -> Dict[str, Any]:
+        """Get list of flags for fortress"""
+        return self.api.get(f"/fortress/{fortress_id}/flags")
+    
+    def reset_fortress(self, fortress_id: int) -> Dict[str, Any]:
+        """Vote reset fortress"""
+        return self.api.post(f"/fortress/{fortress_id}/reset")
 
 # Click commands
 @click.group()
@@ -49,154 +45,164 @@ def fortresses():
     pass
 
 @fortresses.command()
-@click.option('--page', default=1, help='Page number')
-@click.option('--per-page', default=20, help='Results per page')
-def list(page, per_page):
+def list():
     """List fortresses"""
     try:
         api_client = HTBAPIClient()
         fortresses_module = FortressesModule(api_client)
-        result = fortresses_module.get_fortress_list(page, per_page)
+        result = fortresses_module.get_fortresses()
         
         if result and 'data' in result:
-            fortresses_data = result['data']['data'] if isinstance(result['data'], dict) and 'data' in result['data'] else result['data']
+            fortresses_data = result['data']
             
-            table = Table(title=f"Fortresses (Page {page})")
-            table.add_column("ID", style="cyan")
-            table.add_column("Name", style="green")
-            table.add_column("Difficulty", style="yellow")
-            table.add_column("Points", style="magenta")
-            table.add_column("Status", style="blue")
-            table.add_column("Machines", style="red")
+            table = Table(title="Fortresses")
+            table.add_column("ID", style="cyan", no_wrap=True)
+            table.add_column("Name", style="green", no_wrap=True)
+            table.add_column("New", style="yellow", no_wrap=True)
+            table.add_column("Flags", style="magenta", no_wrap=True)
             
             try:
-                for fortress in fortresses_data:
-                    table.add_row(
-                        str(fortress.get('id', 'N/A') or 'N/A'),
-                        str(fortress.get('name', 'N/A') or 'N/A'),
-                        str(fortress.get('difficulty', 'N/A') or 'N/A'),
-                        str(fortress.get('points', 'N/A') or 'N/A'),
-                        str(fortress.get('status', 'N/A') or 'N/A'),
-                        str(fortress.get('machines_count', 'N/A') or 'N/A')
-                    )
+                # Convert object to list of fortresses
+                fortresses_list = []
+                for key, value in fortresses_data.items():
+                    if isinstance(value, dict):
+                        fortresses_list.append(value)
+                
+                for fortress in fortresses_list:
+                    fortress_id = str(fortress.get('id', 'N/A') or 'N/A')
+                    fortress_name = str(fortress.get('name', 'N/A') or 'N/A')
+                    fortress_new = 'Yes' if fortress.get('new') else 'No'
+                    fortress_flags = str(fortress.get('number_of_flags', 'N/A') or 'N/A')
+                    
+                    table.add_row(fortress_id, fortress_name, fortress_new, fortress_flags)
                 
                 console.print(table)
             except Exception as e:
                 console.print(f"[yellow]Error processing fortresses data: {e}[/yellow]")
+                console.print(f"[yellow]Data type: {type(fortresses_data)}[/yellow]")
+                console.print(f"[yellow]Data: {fortresses_data}[/yellow]")
         else:
             console.print("[yellow]No fortresses found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @fortresses.command()
-@click.argument('fortress_slug')
-def info(fortress_slug):
-    """Get fortress info by slug"""
+@click.argument('fortress_id', type=int)
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def info(fortress_id, responses, option):
+    """Get fortress info by ID"""
     try:
         api_client = HTBAPIClient()
         fortresses_module = FortressesModule(api_client)
-        result = fortresses_module.get_fortress_info(fortress_slug)
+        result = fortresses_module.get_fortress(fortress_id)
         
-        if result and 'info' in result:
-            info = result['info']
-            console.print(Panel.fit(
-                f"[bold green]Fortress Info[/bold green]\n"
-                f"Name: {info.get('name', 'N/A') or 'N/A'}\n"
-                f"Difficulty: {info.get('difficulty', 'N/A') or 'N/A'}\n"
-                f"Points: {info.get('points', 'N/A') or 'N/A'}\n"
-                f"Status: {info.get('status', 'N/A') or 'N/A'}\n"
-                f"Machines: {info.get('machines_count', 'N/A') or 'N/A'}\n"
-                f"Description: {info.get('description', 'N/A') or 'N/A'}",
-                title=f"Fortress: {fortress_slug}"
-            ))
+        if result and 'data' in result:
+            fortress_data = result['data']
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All Fortress Data[/bold green]\n"
+                    f"{fortress_data}",
+                    title=f"Fortress ID: {fortress_id}"
+                ))
+            elif option:
+                # Show specific fields
+                info_text = f"[bold green]Fortress Info[/bold green]\n"
+                for field in option:
+                    value = fortress_data.get(field, 'N/A')
+                    info_text += f"{field}: {value}\n"
+                console.print(Panel.fit(info_text, title=f"Fortress ID: {fortress_id}"))
+            else:
+                # Show default fields
+                console.print(Panel.fit(
+                    f"[bold green]Fortress Info[/bold green]\n"
+                    f"ID: {fortress_data.get('id', 'N/A') or 'N/A'}\n"
+                    f"Name: {fortress_data.get('name', 'N/A') or 'N/A'}\n"
+                    f"IP: {fortress_data.get('ip', 'N/A') or 'N/A'}\n"
+                    f"Points: {fortress_data.get('points', 'N/A') or 'N/A'}\n"
+                    f"Progress: {fortress_data.get('progress_percent', 'N/A') or 'N/A'}%\n"
+                    f"Players Completed: {fortress_data.get('players_completed', 'N/A') or 'N/A'}\n"
+                    f"Description: {fortress_data.get('description', 'N/A') or 'N/A'}",
+                    title=f"Fortress ID: {fortress_id}"
+                ))
         else:
             console.print("[yellow]Fortress not found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @fortresses.command()
-def recommended():
-    """Get recommended fortresses"""
-    try:
-        api_client = HTBAPIClient()
-        fortresses_module = FortressesModule(api_client)
-        result = fortresses_module.get_fortress_recommended()
-        
-        if result and 'data' in result:
-            recommended_data = result['data']
-            
-            table = Table(title="Recommended Fortresses")
-            table.add_column("Name", style="cyan")
-            table.add_column("Difficulty", style="green")
-            table.add_column("Points", style="yellow")
-            table.add_column("Machines", style="magenta")
-            
-            for fortress in recommended_data:
-                table.add_row(
-                    str(fortress.get('name', 'N/A') or 'N/A'),
-                    str(fortress.get('difficulty', 'N/A') or 'N/A'),
-                    str(fortress.get('points', 'N/A') or 'N/A'),
-                    str(fortress.get('machines_count', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
-        else:
-            console.print("[yellow]No recommended fortresses found[/yellow]")
-    except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
-
-@fortresses.command()
 @click.argument('fortress_id', type=int)
-def activity(fortress_id):
-    """Get fortress activity"""
+@click.argument('flag')
+def submit_flag(fortress_id, flag):
+    """Submit flag for fortress"""
     try:
         api_client = HTBAPIClient()
         fortresses_module = FortressesModule(api_client)
-        result = fortresses_module.get_fortress_activity(fortress_id)
+        flag_data = {"flag": flag}
+        result = fortresses_module.submit_fortress_flag(fortress_id, flag_data)
         
-        if result and 'data' in result:
-            activity_data = result['data']
-            
-            table = Table(title=f"Fortress Activity (ID: {fortress_id})")
-            table.add_column("User", style="cyan")
-            table.add_column("Type", style="green")
-            table.add_column("Date", style="yellow")
-            table.add_column("Points", style="magenta")
-            
-            for activity in activity_data:
-                table.add_row(
-                    str(activity.get('user', 'N/A') or 'N/A'),
-                    str(activity.get('type', 'N/A') or 'N/A'),
-                    str(activity.get('date', 'N/A') or 'N/A'),
-                    str(activity.get('points', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
-        else:
-            console.print("[yellow]No activity found[/yellow]")
-    except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
-
-@fortresses.command()
-@click.argument('fortress_id', type=int)
-def writeup(fortress_id):
-    """Get fortress writeup"""
-    try:
-        api_client = HTBAPIClient()
-        fortresses_module = FortressesModule(api_client)
-        result = fortresses_module.get_fortress_writeup(fortress_id)
-        
-        if result and 'data' in result:
-            writeup_data = result['data']
+        if result:
             console.print(Panel.fit(
-                f"[bold green]Fortress Writeup[/bold green]\n"
+                f"[bold green]Flag Submission Result[/bold green]\n"
                 f"Fortress ID: {fortress_id}\n"
-                f"Title: {writeup_data.get('title', 'N/A') or 'N/A'}\n"
-                f"Author: {writeup_data.get('author', 'N/A') or 'N/A'}\n"
-                f"Content: {writeup_data.get('content', 'N/A') or 'N/A'}",
-                title="Fortress Writeup"
+                f"Message: {result.get('message', 'N/A') or 'N/A'}",
+                title="Fortress Flag Submission"
             ))
         else:
-            console.print("[yellow]No writeup found[/yellow]")
+            console.print("[yellow]No result from flag submission[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@fortresses.command()
+@click.argument('fortress_id', type=int)
+def flags(fortress_id):
+    """Get list of flags for fortress"""
+    try:
+        api_client = HTBAPIClient()
+        fortresses_module = FortressesModule(api_client)
+        result = fortresses_module.get_fortress_flags(fortress_id)
+        
+        if result and 'data' in result:
+            flags_data = result['data']
+            
+            table = Table(title=f"Fortress Flags (ID: {fortress_id})")
+            table.add_column("ID", style="cyan")
+            table.add_column("Title", style="green")
+            table.add_column("Points", style="yellow")
+            table.add_column("Owned", style="magenta")
+            
+            for flag in flags_data:
+                table.add_row(
+                    str(flag.get('id', 'N/A') or 'N/A'),
+                    str(flag.get('title', 'N/A') or 'N/A'),
+                    str(flag.get('points', 'N/A') or 'N/A'),
+                    str(flag.get('owned', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No flags found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@fortresses.command()
+@click.argument('fortress_id', type=int)
+def reset(fortress_id):
+    """Vote reset fortress"""
+    try:
+        api_client = HTBAPIClient()
+        fortresses_module = FortressesModule(api_client)
+        result = fortresses_module.reset_fortress(fortress_id)
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Fortress Reset Result[/bold green]\n"
+                f"Fortress ID: {fortress_id}\n"
+                f"Message: {result.get('message', 'N/A') or 'N/A'}",
+                title="Fortress Reset"
+            ))
+        else:
+            console.print("[yellow]No result from reset[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
