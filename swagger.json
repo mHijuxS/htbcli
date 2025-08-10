@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="" />
+	<meta name="keywords" content="pen testing,hack,hacking,penetration testing,infosec,information security,labs">
+	<meta name="author" content="Hack The Box">
+	<meta name="google-site-verification" content="ut2KvZ-Bku4Vdbk1hfkkiX6W_Gb_9-CR9UD8ZU4B0mU" />
+
+	<meta property="og:title" content="" />
+	<meta property=”og:description” content="          An online platform to test and advance your skills in penetration testing and cyber security.  
+    " />
+	<meta property="og:image" content="" />
+	<meta property="og:url" content="https://labs.hackthebox.com/api/v4/swagger.json" />
+	<meta property="og:image" content="https://labs.hackthebox.com/images/htb_socialmedia_cover.png" />
+	<meta property="og:site_name" content="Hack The Box" />
+	<meta property="fb:app_id" content="269224263502219" />
+	<meta property="og:description" content="An online platform to test and advance your skills in penetration testing and cyber security." />
+	<meta property="og:type" content="website" />
+	<meta name="twitter:card" content="summary_large_image">
+	<!-- CSRF Token -->
+	<meta name="csrf-token" content="">
+	<meta name="wot-verification" content="1eeefbec1f6305acd476" />
+	<script type='application/ld+json'>
+    {
+      "@context": "http://schema.org",
+      "@type": "Organization",
+      "url": "https://www.hackthebox.eu",
+      "name": "Hack The Box",
+      "contactPoint": [{
+        "@type": "ContactPoint",
+        "telephone": "+44-203-6178-265",
+        "contactType": "emergency"
+      }],
+      "sameAs": [
+        "https://www.facebook.com/hackthebox.eu",
+        "https://www.linkedin.com/company/hackthebox",
+        "https://twitter.com/hackthebox_eu"
+      ],
+      "logo": "https://labs.hackthebox.com/images/favicon.png",
+      "description": "An online platform to test and advance your skills in penetration testing and cyber security.",
+      "founder": {
+        "@type": "Person",
+        "name": "Haris Pylarinos"
+       },
+       "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.96",
+        "bestRating": "5",
+        "worstRating": "1",
+        "ratingCount": "886"
+       }
+    }
+    </script>
+
+	<script>
+		! function() {
+			var analytics = window.analytics = window.analytics || [];
+			if (!analytics.initialize)
+				if (analytics.invoked) window.console && console.error && console.error("Segment snippet included twice.");
+				else {
+					analytics.invoked = !0;
+					analytics.methods = ["trackSubmit", "trackClick", "trackLink", "trackForm", "pageview", "identify", "reset", "group", "track", "ready", "alias", "debug", "page", "once", "off", "on", "addSourceMiddleware", "addIntegrationMiddleware", "setAnonymousId", "addDestinationMiddleware"];
+					analytics.factory = function(e) {
+						return function() {
+							var t = Array.prototype.slice.call(arguments);
+							t.unshift(e);
+							analytics.push(t);
+							return analytics
+						}
+					};
+					for (var e = 0; e < script analytics.methods.length; e++) {
+						var key = analytics.methods[e];
+						analytics[key] = analytics.factory(key)
+					}
+					analytics.load = function(key, e) {
+						var t = document.createElement("script");
+						t.type = "text/javascript";
+						t.async = !0;
+						t.src = "https://cdn.segment.com/analytics.js/v1/" + key + "/analytics.min.js";
+						var n = document.getElementsByTagName("script")[0];
+						n.parentNode.insertBefore(t, n);
+						analytics._loadOptions = e
+					};
+					analytics._writeKey = "0TfpkI8Z8dM5cArXmzVpfEBmj10vpbfI";
+					analytics.SNIPPET_VERSION = "4.13.2";
+					analytics.load("0TfpkI8Z8dM5cArXmzVpfEBmj10vpbfI");
+											analytics.page("Oooops!");
+									}
+		}();
+	</script>
+
+	<!-- Page title -->
+	<title>Oooops!</title>
+	<link href="https://www.hackthebox.eu/api/v4/swagger.json" rel="canonical" />
+
+	<!-- styles -->
+		<link href="https://labs.hackthebox.com/css/htb-frontend.css" rel="stylesheet" />
+	<link href="https://labs.hackthebox.com/css/icons.css" rel="stylesheet" />
+	<link href="https://use.typekit.net/ryt3opf.css" rel="stylesheet">
+	<link href="/images/favicon.png" rel="icon">
+	<style>
+		body {
+			font-family: neue-haas-unica, sans-serif;
+		}
+	</style>
+
+	<script async src="https://www.googletagmanager.com/gtag/js?id=AW-757546894"></script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+
+		function gtag() {
+			dataLayer.push(arguments);
+		}
+		gtag('js', new Date());
+		gtag('config', 'AW-757546894');
+	</script>
+</head>
+
+<body class="blank" style="overflow-y:hidden;background-color:#141d2b!important; ">
+
+	<script>
+		(function(i, s, o, g, r, a, m) {
+			i['GoogleAnalyticsObject'] = r;
+			i[r] = i[r] || function() {
+				(i[r].q = i[r].q || []).push(arguments)
+			}, i[r].l = 1 * new Date();
+			a = s.createElement(o),
+				m = s.getElementsByTagName(o)[0];
+			a.async = 1;
+			a.src = g;
+			m.parentNode.insertBefore(a, m)
+		})(window, document, 'script', 'https://www.google-analytics.com/analytics.js', 'ga');
+		ga('create', 'UA-93577176-1', 'auto');
+		ga('set', 'anonymizeIp', true);
+		ga('send', 'pageview');
+	</script>
+	<!-- Wrapper-->
+	<div class="wrapper">
+
+		<!-- Main content-->
+		<section class="content" style="margin:0px; padding:0px;">
+			
+    <div class="container-center centerbox">
+
+
+        <div class="view-header">
+            <div class="header-icon">
+                <i class="pe page-header-icon pe-7s-way"></i>
+            </div>
+            <div class="header-title">
+                <h3>Are you lost?</h3>
+                <small>
+                    This page does not exist.
+                </small>
+            </div>
+        </div>
+
+        <div class="panel panel-filled">
+            <div class="panel-body text-center">
+                <p>Code 404: Not Found</p>
+                <a href="https://app.hackthebox.com" class="btn btn-w-md btn-default btn-block"><i class="far fa-arrow-circle-left"></i> Back to Home</a>
+            </div>
+        </div>
+
+    </div>
+			<!--<div class="particles_full" id="particles-js"></div>-->
+			<div id="waves" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:-1;"></div>
+		</section>
+		<!-- End main content-->
+
+	</div>
+	<!-- End wrapper-->
+
+	<!-- scripts -->
+	<script src="https://labs.hackthebox.com/js/htb-frontend.min.js"></script>
+	<script src="https://labs.hackthebox.com/js/v2background.js"></script>
+	<script>
+		setTimeout(() => {
+			renderWaveAnimation('#waves', true, 5, 4);
+		}, 1);
+	</script>
+	</body>
+
+</html>

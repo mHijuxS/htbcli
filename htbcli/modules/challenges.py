@@ -117,7 +117,7 @@ def list(page, per_page, difficulty, category):
         result = challenges_module.get_challenges(page, per_page, difficulty, category)
         
         if result and 'data' in result:
-            challenges_data = result['data']['data'] if isinstance(result['data'], dict) and 'data' in result['data'] else result['data']
+            challenges_data = result['data']
             
             table = Table(title=f"Challenges (Page {page})")
             table.add_column("ID", style="cyan")
@@ -132,7 +132,7 @@ def list(page, per_page, difficulty, category):
                     table.add_row(
                         str(challenge.get('id', 'N/A') or 'N/A'),
                         str(challenge.get('name', 'N/A') or 'N/A'),
-                        str(challenge.get('category', 'N/A') or 'N/A'),
+                        str(challenge.get('category_name', 'N/A') or 'N/A'),
                         str(challenge.get('difficulty', 'N/A') or 'N/A'),
                         str(challenge.get('points', 'N/A') or 'N/A'),
                         str(challenge.get('solves', 'N/A') or 'N/A')
@@ -148,25 +148,55 @@ def list(page, per_page, difficulty, category):
 
 @challenges.command()
 @click.argument('challenge_slug')
-def info(challenge_slug):
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def info(challenge_slug, responses, option):
     """Get challenge info by slug"""
     try:
         api_client = HTBAPIClient()
         challenges_module = ChallengesModule(api_client)
         result = challenges_module.get_challenge_info(challenge_slug)
         
-        if result and 'info' in result:
-            info = result['info']
-            console.print(Panel.fit(
-                f"[bold green]Challenge Info[/bold green]\n"
-                f"Name: {info.get('name', 'N/A') or 'N/A'}\n"
-                f"Category: {info.get('category', 'N/A') or 'N/A'}\n"
-                f"Difficulty: {info.get('difficulty', 'N/A') or 'N/A'}\n"
-                f"Points: {info.get('points', 'N/A') or 'N/A'}\n"
-                f"Solves: {info.get('solves', 'N/A') or 'N/A'}\n"
-                f"Description: {info.get('description', 'N/A') or 'N/A'}",
-                title=f"Challenge: {challenge_slug}"
-            ))
+        if result and ('info' in result or 'challenge' in result):
+            info = result.get('info') or result.get('challenge')
+            
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All Available Fields for Challenge Info[/bold green]\n"
+                    f"{chr(10).join([f'{k}: {v}' for k, v in info.items()])}",
+                    title=f"Challenge: {challenge_slug} - All Fields"
+                ))
+            elif option:
+                # Show only specified fields
+                selected_info = {}
+                for field in option:
+                    if field in info:
+                        selected_info[field] = info[field]
+                    else:
+                        console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
+                
+                if selected_info:
+                    console.print(Panel.fit(
+                        f"[bold green]Selected Fields[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in selected_info.items()])}",
+                        title=f"Challenge: {challenge_slug} - Selected Fields"
+                    ))
+            else:
+                # Default view with enhanced information
+                console.print(Panel.fit(
+                    f"[bold green]Challenge Info[/bold green]\n"
+                    f"Name: {info.get('name', 'N/A') or 'N/A'}\n"
+                    f"Category: {info.get('category_name', 'N/A') or 'N/A'}\n"
+                    f"Difficulty: {info.get('difficulty', 'N/A') or 'N/A'}\n"
+                    f"Points: {info.get('points', 'N/A') or 'N/A'}\n"
+                    f"Solves: {info.get('solves', 'N/A') or 'N/A'}\n"
+                    f"Rating: {info.get('rating', 'N/A') or 'N/A'}\n"
+                    f"State: {info.get('state', 'N/A') or 'N/A'}\n"
+                    f"Release Date: {info.get('release_date', 'N/A') or 'N/A'}\n"
+                    f"Description: {info.get('description', 'N/A') or 'N/A'}",
+                    title=f"Challenge: {challenge_slug}"
+                ))
         else:
             console.print("[yellow]Challenge not found[/yellow]")
     except Exception as e:

@@ -145,7 +145,9 @@ def user():
     pass
 
 @user.command()
-def info():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def info(responses, option):
     """Get user information"""
     try:
         api_client = HTBAPIClient()
@@ -154,15 +156,46 @@ def info():
         
         if result and 'info' in result:
             info = result['info']
-            console.print(Panel.fit(
-                f"[bold green]User Information[/bold green]\n"
-                f"Username: {info.get('name', 'N/A') or 'N/A'}\n"
-                f"Rank: {info.get('rank', 'N/A') or 'N/A'}\n"
-                f"Points: {info.get('points', 'N/A') or 'N/A'}\n"
-                f"Country: {info.get('country_name', 'N/A') or 'N/A'}\n"
-                f"Member Since: {info.get('member_since', 'N/A') or 'N/A'}",
-                title="User Info"
-            ))
+            
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All Available Fields for User Info[/bold green]\n"
+                    f"{chr(10).join([f'{k}: {v}' for k, v in info.items()])}",
+                    title="User Info - All Fields"
+                ))
+            elif option:
+                # Show only specified fields
+                selected_info = {}
+                for field in option:
+                    if field in info:
+                        selected_info[field] = info[field]
+                    else:
+                        console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
+                
+                if selected_info:
+                    console.print(Panel.fit(
+                        f"[bold green]Selected Fields[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in selected_info.items()])}",
+                        title="User Info - Selected Fields"
+                    ))
+            else:
+                # Default view with enhanced information
+                team_name = info.get('team', {}).get('name', 'N/A') if info.get('team') else 'N/A'
+                console.print(Panel.fit(
+                    f"[bold green]User Information[/bold green]\n"
+                    f"Username: {info.get('name', 'N/A') or 'N/A'}\n"
+                    f"Email: {info.get('email', 'N/A') or 'N/A'}\n"
+                    f"Rank ID: {info.get('rank_id', 'N/A') or 'N/A'}\n"
+                    f"Team: {team_name}\n"
+                    f"VIP: {'Yes' if info.get('isVip') else 'No'}\n"
+                    f"Subscription: {info.get('subscriptionType', 'N/A') or 'N/A'}\n"
+                    f"Verified: {'Yes' if info.get('verified') else 'No'}\n"
+                    f"Timezone: {info.get('timezone', 'N/A') or 'N/A'}\n"
+                    f"Server ID: {info.get('server_id', 'N/A') or 'N/A'}\n"
+                    f"Beta Tester: {'Yes' if info.get('beta_tester') else 'No'}",
+                    title="User Info"
+                ))
         else:
             console.print("[yellow]No user info found[/yellow]")
     except Exception as e:

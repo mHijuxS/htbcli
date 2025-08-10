@@ -315,7 +315,9 @@ def list(page, per_page, status):
 
 @machines.command()
 @click.argument('machine_slug')
-def profile(machine_slug):
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def profile(machine_slug, responses, option):
     """Get machine profile by slug"""
     try:
         api_client = HTBAPIClient()
@@ -324,18 +326,56 @@ def profile(machine_slug):
         
         if result and 'info' in result:
             info = result['info']
-            console.print(Panel.fit(
-                f"[bold green]Machine Profile[/bold green]\n"
-                f"Name: {info.get('name', 'N/A') or 'N/A'}\n"
-                f"OS: {info.get('os', 'N/A') or 'N/A'}\n"
-                f"Difficulty: {info.get('difficulty', 'N/A') or 'N/A'}\n"
-                f"Points: {info.get('points', 'N/A') or 'N/A'}\n"
-                f"Status: {info.get('status', 'N/A') or 'N/A'}\n"
-                f"IP: {info.get('ip', 'N/A') or 'N/A'}\n"
-                f"User Owns: {info.get('user_owns_count', 'N/A') or 'N/A'}\n"
-                f"Root Owns: {info.get('root_owns_count', 'N/A') or 'N/A'}",
-                title=f"Machine: {machine_slug}"
-            ))
+            
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All Available Fields for Machine Profile[/bold green]\n"
+                    f"{chr(10).join([f'{k}: {v}' for k, v in info.items()])}",
+                    title=f"Machine: {machine_slug} - All Fields"
+                ))
+            elif option:
+                # Show only specified fields
+                selected_info = {}
+                for field in option:
+                    if field in info:
+                        selected_info[field] = info[field]
+                    else:
+                        console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
+                
+                if selected_info:
+                    console.print(Panel.fit(
+                        f"[bold green]Selected Fields[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in selected_info.items()])}",
+                        title=f"Machine: {machine_slug} - Selected Fields"
+                    ))
+            else:
+                # Default view with enhanced information
+                maker_name = info.get('maker', {}).get('name', 'N/A') if info.get('maker') else 'N/A'
+                difficulty_text = info.get('difficultyText', 'N/A')
+                stars = info.get('stars', 'N/A')
+                is_guided = 'Yes' if info.get('isGuidedEnabled') else 'No'
+                auth_user_owns = 'Yes' if info.get('authUserInUserOwns') else 'No'
+                auth_root_owns = 'Yes' if info.get('authUserInRootOwns') else 'No'
+                
+                console.print(Panel.fit(
+                    f"[bold green]Machine Profile[/bold green]\n"
+                    f"Name: {info.get('name', 'N/A') or 'N/A'}\n"
+                    f"OS: {info.get('os', 'N/A') or 'N/A'}\n"
+                    f"Difficulty: {difficulty_text}\n"
+                    f"Points: {info.get('points', 'N/A') or 'N/A'}\n"
+                    f"Stars: {stars}\n"
+                    f"Status: {'Active' if info.get('active') else 'Retired' if info.get('retired') else 'N/A'}\n"
+                    f"IP: {info.get('ip', 'N/A') or 'N/A'}\n"
+                    f"User Owns: {info.get('user_owns_count', 'N/A') or 'N/A'}\n"
+                    f"Root Owns: {info.get('root_owns_count', 'N/A') or 'N/A'}\n"
+                    f"Maker: {maker_name}\n"
+                    f"Guided Mode: {is_guided}\n"
+                    f"You Own User: {auth_user_owns}\n"
+                    f"You Own Root: {auth_root_owns}\n"
+                    f"Release Date: {info.get('release', 'N/A') or 'N/A'}",
+                    title=f"Machine: {machine_slug}"
+                ))
         else:
             console.print("[yellow]Machine not found[/yellow]")
     except Exception as e:

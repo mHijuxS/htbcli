@@ -241,24 +241,113 @@ def search(query, tags):
         platform_module = PlatformModule(api_client)
         result = platform_module.get_search_fetch(query, tags)
         
-        if result and 'data' in result:
-            search_data = result['data']
+        # The search API returns data directly without a 'data' wrapper
+        if result:
+            # Check if we have any results in any category
+            total_results = 0
+            if result.get('machines'):
+                total_results += len(result['machines'])
+            if result.get('challenges'):
+                total_results += len(result['challenges'])
+            if result.get('users'):
+                total_results += len(result['users'])
+            if result.get('teams'):
+                total_results += len(result['teams'])
+            if result.get('joboffers'):
+                total_results += len(result['joboffers'])
             
-            table = Table(title=f"Search Results for '{query}'")
-            table.add_column("Type", style="cyan")
-            table.add_column("Name", style="green")
-            table.add_column("Description", style="yellow")
-            table.add_column("Score", style="magenta")
+            if total_results == 0:
+                console.print("[yellow]No search results found[/yellow]")
+                return
             
-            for item in search_data:
-                table.add_row(
-                    str(item.get('type', 'N/A') or 'N/A'),
-                    str(item.get('name', 'N/A') or 'N/A'),
-                    str(item.get('description', 'N/A') or 'N/A'),
-                    str(item.get('score', 'N/A') or 'N/A')
-                )
+            # Display results by category
+            if result.get('machines'):
+                table = Table(title=f"Machines - Search Results for '{query}'")
+                table.add_column("ID", style="cyan")
+                table.add_column("Name", style="green")
+                table.add_column("Avatar", style="yellow")
+                table.add_column("Tier", style="magenta")
+                table.add_column("Starting Point", style="blue")
+                
+                for machine in result['machines']:
+                    avatar_status = "Yes" if machine.get('avatar') else "No"
+                    tier_status = str(machine.get('tierId', 'N/A') or 'N/A')
+                    sp_status = "Yes" if machine.get('isSp') else "No"
+                    table.add_row(
+                        str(machine.get('id', 'N/A') or 'N/A'),
+                        str(machine.get('value', 'N/A') or 'N/A'),
+                        avatar_status,
+                        tier_status,
+                        sp_status
+                    )
+                console.print(table)
             
-            console.print(table)
+            if result.get('challenges'):
+                table = Table(title=f"Challenges - Search Results for '{query}'")
+                table.add_column("ID", style="cyan")
+                table.add_column("Name", style="green")
+                table.add_column("Category ID", style="yellow")
+                table.add_column("Description", style="magenta")
+                
+                for challenge in result['challenges']:
+                    # Truncate description if too long
+                    description = challenge.get('description', 'N/A') or 'N/A'
+                    if len(description) > 50:
+                        description = description[:47] + "..."
+                    
+                    table.add_row(
+                        str(challenge.get('id', 'N/A') or 'N/A'),
+                        str(challenge.get('value', 'N/A') or 'N/A'),
+                        str(challenge.get('challenge_category_id', 'N/A') or 'N/A'),
+                        description
+                    )
+                console.print(table)
+            
+            if result.get('users'):
+                table = Table(title=f"Users - Search Results for '{query}'")
+                table.add_column("ID", style="cyan")
+                table.add_column("Username", style="green")
+                table.add_column("Avatar", style="yellow")
+                
+                for user in result['users']:
+                    avatar_status = "Yes" if user.get('avatar') else "No"
+                    table.add_row(
+                        str(user.get('id', 'N/A') or 'N/A'),
+                        str(user.get('value', 'N/A') or 'N/A'),
+                        avatar_status
+                    )
+                console.print(table)
+            
+            if result.get('teams'):
+                table = Table(title=f"Teams - Search Results for '{query}'")
+                table.add_column("ID", style="cyan")
+                table.add_column("Name", style="green")
+                table.add_column("Avatar", style="yellow")
+                
+                for team in result['teams']:
+                    avatar_status = "Yes" if team.get('avatar') else "No"
+                    table.add_row(
+                        str(team.get('id', 'N/A') or 'N/A'),
+                        str(team.get('value', 'N/A') or 'N/A'),
+                        avatar_status
+                    )
+                console.print(table)
+            
+            if result.get('joboffers'):
+                table = Table(title=f"Job Offers - Search Results for '{query}'")
+                table.add_column("ID", style="cyan")
+                table.add_column("Title", style="green")
+                table.add_column("Company", style="yellow")
+                table.add_column("Location", style="magenta")
+                
+                for job in result['joboffers']:
+                    table.add_row(
+                        str(job.get('id', 'N/A') or 'N/A'),
+                        str(job.get('title', 'N/A') or 'N/A'),
+                        str(job.get('company', 'N/A') or 'N/A'),
+                        str(job.get('location', 'N/A') or 'N/A')
+                    )
+                console.print(table)
         else:
             console.print("[yellow]No search results found[/yellow]")
     except Exception as e:
