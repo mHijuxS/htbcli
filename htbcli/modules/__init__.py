@@ -22,6 +22,7 @@ from .team import team, TeamModule
 from .tracks import tracks, TracksModule
 from .universities import universities, UniversitiesModule
 from .vm import vm, VMModule
+from .vpn import vpn, VPNModule
 
 __all__ = [
     'machines', 'MachinesModule',
@@ -43,5 +44,6 @@ __all__ = [
     'team', 'TeamModule',
     'tracks', 'TracksModule',
     'universities', 'UniversitiesModule',
-    'vm', 'VMModule'
+    'vm', 'VMModule',
+    'vpn', 'VPNModule'
 ]

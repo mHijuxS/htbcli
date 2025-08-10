@@ -186,7 +186,7 @@ The CLI is organized into the following modules based on the HTB API:
 - **Team**: Team ranking endpoints (list teams, profiles, members, rankings, stats)
 - **Tracks**: Track-related endpoints (list, profile, progress, modules)
 - **Universities**: University ranking endpoints (list, profile, rankings, stats)
-- **VM**: VM spawning endpoints (spawn, terminate, status, info, connection, logs)
+- **VM**: VM spawning operations (spawn, extend, reset, terminate, vote reset, accept reset vote)
 
 ## Examples
 
@@ -202,12 +202,65 @@ The CLI is organized into the following modules based on the HTB API:
 
 ### Submit a Flag
 ```bash
-.venv/bin/htbcli machines submit "flag{abc123def456}"
+.venv/bin/htbcli machines submit "flag{abc123def456}" 12345
 ```
 
 ### Get User Profile
 ```bash
 .venv/bin/htbcli user profile 12345
+```
+
+### VM Operations
+```bash
+# Spawn a VM for machine ID 123
+.venv/bin/htbcli vm spawn 123
+
+# Extend VM time for machine ID 123
+.venv/bin/htbcli vm extend 123
+
+# Reset VM for machine ID 123
+.venv/bin/htbcli vm reset 123
+
+# Terminate VM for machine ID 123
+.venv/bin/htbcli vm terminate 123
+
+# Vote to reset VM for machine ID 123
+.venv/bin/htbcli vm vote-reset 123
+
+# Accept reset vote for machine ID 123
+.venv/bin/htbcli vm accept-vote 123
+```
+
+### VPN Management
+```bash
+# List available VPN servers
+.venv/bin/htbcli vpn list
+
+# Download all VPN configurations
+.venv/bin/htbcli vpn download
+
+# List downloaded VPN files
+.venv/bin/htbcli vpn files
+
+# Start VPN connection (requires sudo)
+.venv/bin/htbcli vpn start "EU VIP 7" --mode udp
+
+# Stop VPN connection
+.venv/bin/htbcli vpn stop
+
+# Get VPN connection status
+.venv/bin/htbcli vpn status
+```
+
+**Note**: VPN operations require OpenVPN to be installed and may require sudo privileges.
+
+### Get VM Status
+```bash
+# Get active machine and VM status
+.venv/bin/htbcli machines active
+
+# Get VM status (alias)
+.venv/bin/htbcli machines vm-status
 ```
 
 ### List All Available Endpoints

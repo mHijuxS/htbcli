@@ -245,12 +245,44 @@ def machines(responses, option, count_only):
                     title="Season Machines"
                 ))
             elif option:
-                # Show specific fields
-                info_text = f"[bold green]Season Machines[/bold green]\n"
-                for field in option:
-                    value = result.get(field, 'N/A')
-                    info_text += f"{field}: {value}\n"
-                console.print(Panel.fit(info_text, title="Season Machines"))
+                # Show default table with additional specified fields
+                if 'data' in result:
+                    machines_data = result['data']
+                    if isinstance(machines_data, list) and machines_data:
+                        table = Table(title="Season Machines")
+                        table.add_column("Name", style="green")
+                        table.add_column("Difficulty", style="yellow")
+                        table.add_column("Rooted", style="cyan")
+                        table.add_column("OS", style="magenta")
+                        table.add_column("Points", style="blue")
+                        
+                        # Add additional columns for specified fields
+                        for field in option:
+                            table.add_column(field.title(), style="green")
+                        
+                        for machine in machines_data:
+                            # Default row data
+                            name = str(machine.get('name', 'N/A') or 'N/A')
+                            difficulty = str(machine.get('difficulty_text', 'N/A') or 'N/A')
+                            is_owned_root = machine.get('is_owned_root', False)
+                            rooted = "Yes" if is_owned_root else "No"
+                            os = str(machine.get('os', 'N/A') or 'N/A')
+                            points = str(machine.get('root_points', 'N/A') or 'N/A')
+                            
+                            # Start with default columns
+                            row = [name, difficulty, rooted, os, points]
+                            
+                            # Add additional specified fields
+                            for field in option:
+                                row.append(str(machine.get(field, 'N/A') or 'N/A'))
+                            
+                            table.add_row(*row)
+                        
+                        console.print(table)
+                    else:
+                        console.print("[yellow]No machines data available[/yellow]")
+                else:
+                    console.print("[yellow]No machines data found[/yellow]")
             elif count_only:
                 # Show only count
                 if 'data' in result:
@@ -323,12 +355,44 @@ def machines_completed(season_id, responses, option):
                     title=f"Season {season_id} Completed Machines"
                 ))
             elif option:
-                # Show specific fields
-                info_text = f"[bold green]Completed Machines[/bold green]\n"
-                for field in option:
-                    value = result.get(field, 'N/A')
-                    info_text += f"{field}: {value}\n"
-                console.print(Panel.fit(info_text, title=f"Season {season_id} Completed Machines"))
+                # Show default table with additional specified fields
+                if 'data' in result:
+                    completed_data = result['data']
+                    if isinstance(completed_data, list) and completed_data:
+                        table = Table(title=f"Season {season_id} Completed Machines")
+                        table.add_column("Name", style="green")
+                        table.add_column("Difficulty", style="yellow")
+                        table.add_column("Rooted", style="cyan")
+                        table.add_column("OS", style="magenta")
+                        table.add_column("Points", style="blue")
+                        
+                        # Add additional columns for specified fields
+                        for field in option:
+                            table.add_column(field.title(), style="green")
+                        
+                        for machine in completed_data:
+                            # Default row data
+                            name = str(machine.get('name', 'N/A') or 'N/A')
+                            difficulty = str(machine.get('difficulty_text', 'N/A') or 'N/A')
+                            is_owned_root = machine.get('is_owned_root', False)
+                            rooted = "Yes" if is_owned_root else "No"
+                            os = str(machine.get('os', 'N/A') or 'N/A')
+                            points = str(machine.get('root_points', 'N/A') or 'N/A')
+                            
+                            # Start with default columns
+                            row = [name, difficulty, rooted, os, points]
+                            
+                            # Add additional specified fields
+                            for field in option:
+                                row.append(str(machine.get(field, 'N/A') or 'N/A'))
+                            
+                            table.add_row(*row)
+                        
+                        console.print(table)
+                    else:
+                        console.print("[yellow]No completed machines data available[/yellow]")
+                else:
+                    console.print("[yellow]No completed machines data found[/yellow]")
             else:
                 # Show default fields
                 if 'data' in result:

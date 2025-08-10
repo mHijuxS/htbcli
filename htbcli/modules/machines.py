@@ -146,6 +146,46 @@ class MachinesModule:
         """Get machine tasks"""
         return self.api.get(f"/machines/{machine_id}/tasks")
     
+    def get_vm_status(self) -> Dict[str, Any]:
+        """Get VM status with complete machine information including IP and profile data"""
+        # Get active machine data
+        active_result = self.get_machine_active()
+        
+        if active_result and active_result.get('info'):
+            active_info = active_result['info']
+            machine_name = active_info.get('name', '').lower()
+            
+            # Get machine profile data for additional information
+            try:
+                profile_result = self.get_machine_profile(machine_name)
+                if profile_result and profile_result.get('info'):
+                    profile_info = profile_result['info']
+                    
+                    # Merge the data, prioritizing profile data for IP and other fields
+                    merged_info = active_info.copy()
+                    merged_info.update({
+                        'ip': profile_info.get('ip', active_info.get('ip')),
+                        'info_status': profile_info.get('info_status'),
+                        'description': profile_info.get('description'),
+                        'os': profile_info.get('os'),
+                        'difficulty': profile_info.get('difficulty'),
+                        'points': profile_info.get('points'),
+                        'user_owns_count': profile_info.get('user_owns_count'),
+                        'root_owns_count': profile_info.get('root_owns_count'),
+                        'maker': profile_info.get('maker'),
+                        'release_date': profile_info.get('release_date'),
+                        'retired_date': profile_info.get('retired_date'),
+                        'active': profile_info.get('active'),
+                        'retired': profile_info.get('retired')
+                    })
+                    
+                    return {'info': merged_info}
+            except Exception:
+                # If profile fetch fails, return active data as fallback
+                pass
+        
+        return active_result
+    
     def update_todo(self, product: str, product_id: int, todo_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update todo list"""
         return self.api.post(f"/{product}/todo/update/{product_id}", json_data=todo_data)
@@ -157,24 +197,118 @@ def machines():
     pass
 
 @machines.command()
-def active():
-    """Get currently active machine"""
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def active(responses, option):
+    """Get currently active machine and VM status"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
-        result = machines_module.get_machine_active()
+        result = machines_module.get_vm_status()
         
         if result and result.get('info'):
-            console.print(Panel.fit(
-                f"[bold green]Active Machine[/bold green]\n"
-                f"Name: {result.get('info', {}).get('name', 'N/A') or 'N/A'}\n"
-                f"OS: {result.get('info', {}).get('os', 'N/A') or 'N/A'}\n"
-                f"Difficulty: {result.get('info', {}).get('difficulty', 'N/A') or 'N/A'}\n"
-                f"Points: {result.get('info', {}).get('points', 'N/A') or 'N/A'}",
-                title="Active Machine"
-            ))
+            info = result['info']
+            
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All Available Fields for Active Machine[/bold green]\n"
+                    f"{chr(10).join([f'{k}: {v}' for k, v in info.items()])}",
+                    title="Active Machine - All Fields"
+                ))
+            elif option:
+                # Show only specified fields
+                selected_info = {}
+                for field in option:
+                    if field in info:
+                        selected_info[field] = info[field]
+                    else:
+                        console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
+                
+                if selected_info:
+                    console.print(Panel.fit(
+                        f"[bold green]Selected Fields[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in selected_info.items()])}",
+                        title="Active Machine - Selected Fields"
+                    ))
+            else:
+                # Default view
+                console.print(Panel.fit(
+                    f"[bold green]Active Machine & VM Status[/bold green]\n"
+                    f"Machine ID: {info.get('id', 'N/A')}\n"
+                    f"Name: {info.get('name', 'N/A')}\n"
+                    f"Type: {info.get('type', 'N/A')}\n"
+                    f"IP Address: {info.get('ip', 'N/A')}\n"
+                    f"Lab Server: {info.get('lab_server', 'N/A')}\n"
+                    f"VPN Server ID: {info.get('vpn_server_id', 'N/A')}\n"
+                    f"Expires At: {info.get('expires_at', 'N/A')}\n"
+                    f"Is Spawning: {info.get('isSpawning', 'N/A')}\n"
+                    f"Tier ID: {info.get('tier_id', 'N/A')}\n"
+                    f"Voted: {info.get('voted', 'N/A')}\n"
+                    f"Voting: {info.get('voting', 'N/A')}\n"
+                    f"Info Status: {info.get('info_status', 'N/A')}",
+                    title="Active Machine & VM Status"
+                ))
         else:
             console.print("[yellow]No active machine found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def vm_status(responses, option):
+    """Get VM status (alias for active command)"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_vm_status()
+        
+        if result and result.get('info'):
+            info = result['info']
+            
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All Available Fields for VM Status[/bold green]\n"
+                    f"{chr(10).join([f'{k}: {v}' for k, v in info.items()])}",
+                    title="VM Status - All Fields"
+                ))
+            elif option:
+                # Show only specified fields
+                selected_info = {}
+                for field in option:
+                    if field in info:
+                        selected_info[field] = info[field]
+                    else:
+                        console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
+                
+                if selected_info:
+                    console.print(Panel.fit(
+                        f"[bold green]Selected Fields[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in selected_info.items()])}",
+                        title="VM Status - Selected Fields"
+                    ))
+            else:
+                # Default view
+                console.print(Panel.fit(
+                    f"[bold green]VM Status[/bold green]\n"
+                    f"Machine ID: {info.get('id', 'N/A')}\n"
+                    f"Name: {info.get('name', 'N/A')}\n"
+                    f"Type: {info.get('type', 'N/A')}\n"
+                    f"IP Address: {info.get('ip', 'N/A')}\n"
+                    f"Lab Server: {info.get('lab_server', 'N/A')}\n"
+                    f"VPN Server ID: {info.get('vpn_server_id', 'N/A')}\n"
+                    f"Expires At: {info.get('expires_at', 'N/A')}\n"
+                    f"Is Spawning: {info.get('isSpawning', 'N/A')}\n"
+                    f"Tier ID: {info.get('tier_id', 'N/A')}\n"
+                    f"Voted: {info.get('voted', 'N/A')}\n"
+                    f"Voting: {info.get('voting', 'N/A')}\n"
+                    f"Info Status: {info.get('info_status', 'N/A')}",
+                    title="VM Status"
+                ))
+        else:
+            console.print("[yellow]No VM status found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
@@ -290,28 +424,71 @@ def list_machines(page, per_page, status, responses, option):
         if result and 'data' in result:
             machines_data = result['data']['data'] if isinstance(result['data'], dict) and 'data' in result['data'] else result['data']
             
-            table = Table(title=f"Machines (Page {page})")
-            table.add_column("ID", style="cyan")
-            table.add_column("Name", style="green")
-            table.add_column("OS", style="yellow")
-            table.add_column("Difficulty", style="magenta")
-            table.add_column("Points", style="blue")
-            table.add_column("Status", style="red")
-            
-            try:
+            if responses:
+                # Show all available fields for first machine
+                if machines_data:
+                    first_machine = machines_data[0]
+                    console.print(Panel.fit(
+                        f"[bold green]All Available Fields for Machines[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in first_machine.items()])}",
+                        title=f"Machines - All Fields (First Item, Page {page})"
+                    ))
+            elif option:
+                # Show default table with additional specified fields
+                table = Table(title=f"Machines (Page {page})")
+                table.add_column("ID", style="cyan")
+                table.add_column("Name", style="green")
+                table.add_column("OS", style="yellow")
+                table.add_column("Difficulty", style="magenta")
+                table.add_column("Points", style="blue")
+                table.add_column("Status", style="red")
+                
+                # Add additional columns for specified fields
+                for field in option:
+                    table.add_column(field.title(), style="green")
+                
                 for machine in machines_data:
-                    table.add_row(
+                    # Default row data
+                    row = [
                         str(machine.get('id', 'N/A') or 'N/A'),
                         str(machine.get('name', 'N/A') or 'N/A'),
                         str(machine.get('os', 'N/A') or 'N/A'),
                         str(machine.get('difficulty', 'N/A') or 'N/A'),
                         str(machine.get('points', 'N/A') or 'N/A'),
                         str(machine.get('status', 'N/A') or 'N/A')
-                    )
+                    ]
+                    
+                    # Add additional specified fields
+                    for field in option:
+                        row.append(str(machine.get(field, 'N/A') or 'N/A'))
+                    
+                    table.add_row(*row)
                 
                 console.print(table)
-            except Exception as e:
-                console.print(f"[yellow]Error processing machines data: {e}[/yellow]")
+            else:
+                # Show default table
+                table = Table(title=f"Machines (Page {page})")
+                table.add_column("ID", style="cyan")
+                table.add_column("Name", style="green")
+                table.add_column("OS", style="yellow")
+                table.add_column("Difficulty", style="magenta")
+                table.add_column("Points", style="blue")
+                table.add_column("Status", style="red")
+                
+                try:
+                    for machine in machines_data:
+                        table.add_row(
+                            str(machine.get('id', 'N/A') or 'N/A'),
+                            str(machine.get('name', 'N/A') or 'N/A'),
+                            str(machine.get('os', 'N/A') or 'N/A'),
+                            str(machine.get('difficulty', 'N/A') or 'N/A'),
+                            str(machine.get('points', 'N/A') or 'N/A'),
+                            str(machine.get('status', 'N/A') or 'N/A')
+                        )
+                    
+                    console.print(table)
+                except Exception as e:
+                    console.print(f"[yellow]Error processing machines data: {e}[/yellow]")
         else:
             console.print("[yellow]No machines found[/yellow]")
     except Exception as e:

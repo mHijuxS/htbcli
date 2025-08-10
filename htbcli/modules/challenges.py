@@ -131,16 +131,34 @@ def list_challenges(page, per_page, difficulty, category, responses, option):
                         title=f"Challenges - All Fields (First Item, Page {page})"
                     ))
             elif option:
-                # Show only specified fields
-                table = Table(title=f"Challenges - Selected Fields (Page {page})")
+                # Show default table with additional specified fields
+                table = Table(title=f"Challenges (Page {page})")
                 table.add_column("ID", style="cyan")
+                table.add_column("Name", style="green")
+                table.add_column("Category", style="yellow")
+                table.add_column("Difficulty", style="magenta")
+                table.add_column("Points", style="blue")
+                table.add_column("Solves", style="red")
+                
+                # Add additional columns for specified fields
                 for field in option:
                     table.add_column(field.title(), style="green")
                 
                 for challenge in challenges_data:
-                    row = [str(challenge.get('id', 'N/A') or 'N/A')]
+                    # Default row data
+                    row = [
+                        str(challenge.get('id', 'N/A') or 'N/A'),
+                        str(challenge.get('name', 'N/A') or 'N/A'),
+                        str(challenge.get('category_name', 'N/A') or 'N/A'),
+                        str(challenge.get('difficulty', 'N/A') or 'N/A'),
+                        str(challenge.get('points', 'N/A') or 'N/A'),
+                        str(challenge.get('solves', 'N/A') or 'N/A')
+                    ]
+                    
+                    # Add additional specified fields
                     for field in option:
                         row.append(str(challenge.get(field, 'N/A') or 'N/A'))
+                    
                     table.add_row(*row)
                 
                 console.print(table)
@@ -331,16 +349,30 @@ def recommended(responses, option):
                         title="Recommended Challenges - All Fields (First Item)"
                     ))
             elif option:
-                # Show only specified fields
-                table = Table(title="Recommended Challenges - Selected Fields")
+                # Show default table with additional specified fields
+                table = Table(title="Recommended Challenges")
                 table.add_column("Name", style="cyan")
+                table.add_column("Category", style="green")
+                table.add_column("Difficulty", style="yellow")
+                table.add_column("Points", style="magenta")
+                
+                # Add additional columns for specified fields
                 for field in option:
                     table.add_column(field.title(), style="green")
                 
                 for challenge in recommended_data:
-                    row = [str(challenge.get('name', 'N/A') or 'N/A')]
+                    # Default row data
+                    row = [
+                        str(challenge.get('name', 'N/A') or 'N/A'),
+                        str(challenge.get('category', 'N/A') or 'N/A'),
+                        str(challenge.get('difficulty', 'N/A') or 'N/A'),
+                        str(challenge.get('points', 'N/A') or 'N/A')
+                    ]
+                    
+                    # Add additional specified fields
                     for field in option:
                         row.append(str(challenge.get(field, 'N/A') or 'N/A'))
+                    
                     table.add_row(*row)
                 
                 console.print(table)
@@ -389,16 +421,30 @@ def suggested(responses, option):
                         title="Suggested Challenges - All Fields (First Item)"
                     ))
             elif option:
-                # Show only specified fields
-                table = Table(title="Suggested Challenges - Selected Fields")
+                # Show default table with additional specified fields
+                table = Table(title="Suggested Challenges")
                 table.add_column("Name", style="cyan")
+                table.add_column("Category", style="green")
+                table.add_column("Difficulty", style="yellow")
+                table.add_column("Points", style="magenta")
+                
+                # Add additional columns for specified fields
                 for field in option:
                     table.add_column(field.title(), style="green")
                 
                 for challenge in suggested_data:
-                    row = [str(challenge.get('name', 'N/A') or 'N/A')]
+                    # Default row data
+                    row = [
+                        str(challenge.get('name', 'N/A') or 'N/A'),
+                        str(challenge.get('category', 'N/A') or 'N/A'),
+                        str(challenge.get('difficulty', 'N/A') or 'N/A'),
+                        str(challenge.get('points', 'N/A') or 'N/A')
+                    ]
+                    
+                    # Add additional specified fields
                     for field in option:
                         row.append(str(challenge.get(field, 'N/A') or 'N/A'))
+                    
                     table.add_row(*row)
                 
                 console.print(table)
