@@ -81,11 +81,9 @@ def universities():
     pass
 
 @universities.command()
-@click.option('--page', default=1, help='Page number')
-@click.option('--per-page', default=20, help='Results per page')
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def list(page, per_page, responses, option):
+def list_universities(page, per_page, responses, option):
     """List all universities"""
     try:
         api_client = HTBAPIClient()

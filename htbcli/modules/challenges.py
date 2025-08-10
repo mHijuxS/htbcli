@@ -107,11 +107,11 @@ def challenges():
 @challenges.command()
 @click.option('--page', default=1, help='Page number')
 @click.option('--per-page', default=20, help='Results per page')
-@click.option('--difficulty', type=click.Choice(['Easy', 'Medium', 'Hard', 'Insane']), help='Challenge difficulty')
+@click.option('--difficulty', help='Challenge difficulty')
 @click.option('--category', help='Challenge category')
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def list(page, per_page, difficulty, category, responses, option):
+def list_challenges(page, per_page, difficulty, category, responses, option):
     """List challenges"""
     try:
         api_client = HTBAPIClient()

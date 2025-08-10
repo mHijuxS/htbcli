@@ -45,9 +45,9 @@ def starting_point():
     pass
 
 @starting_point.command()
-@click.option('--page', default=1, help='Page number')
-@click.option('--per-page', default=20, help='Results per page')
-def list(page, per_page):
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def list_starting_point(page, per_page):
     """List starting points"""
     try:
         api_client = HTBAPIClient()

@@ -273,8 +273,10 @@ def creators(machine_id):
 @machines.command()
 @click.option('--page', default=1, help='Page number')
 @click.option('--per-page', default=20, help='Results per page')
-@click.option('--status', type=click.Choice(['active', 'retired']), help='Machine status')
-def list(page, per_page, status):
+@click.option('--status', default='active', help='Machine status (active/retired)')
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def list_machines(page, per_page, status, responses, option):
     """List machines"""
     try:
         api_client = HTBAPIClient()

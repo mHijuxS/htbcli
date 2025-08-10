@@ -29,7 +29,9 @@ def badges():
     pass
 
 @badges.command()
-def list():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def list_badges():
     """List all badges"""
     try:
         api_client = HTBAPIClient()

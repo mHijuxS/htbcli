@@ -73,7 +73,7 @@ def season():
 @season.command()
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def list(responses, option):
+def list_seasons(responses, option):
     """List seasons"""
     try:
         api_client = HTBAPIClient()
@@ -228,7 +228,8 @@ def machine_active(responses, option):
 @season.command()
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def machines(responses, option):
+@click.option('--count-only', is_flag=True, help='Show only the count of machines')
+def machines(responses, option, count_only):
     """Get season machines"""
     try:
         api_client = HTBAPIClient()
@@ -250,8 +251,8 @@ def machines(responses, option):
                     value = result.get(field, 'N/A')
                     info_text += f"{field}: {value}\n"
                 console.print(Panel.fit(info_text, title="Season Machines"))
-            else:
-                # Show default fields
+            elif count_only:
+                # Show only count
                 if 'data' in result:
                     machines_data = result['data']
                     count = len(machines_data) if isinstance(machines_data, list) else 'N/A'
@@ -260,6 +261,37 @@ def machines(responses, option):
                         f"Count: {count}",
                         title="Season Machines"
                     ))
+                else:
+                    console.print(Panel.fit(
+                        f"[bold green]Season Machines[/bold green]\n"
+                        f"Status: {result.get('status', 'N/A') or 'N/A'}",
+                        title="Season Machines"
+                    ))
+            else:
+                # Show machines in table format
+                if 'data' in result:
+                    machines_data = result['data']
+                    if isinstance(machines_data, list) and machines_data:
+                        table = Table(title="Season Machines")
+                        table.add_column("Name", style="green")
+                        table.add_column("Difficulty", style="yellow")
+                        table.add_column("Rooted", style="cyan")
+                        table.add_column("OS", style="magenta")
+                        table.add_column("Points", style="blue")
+                        
+                        for machine in machines_data:
+                            name = str(machine.get('name', 'N/A') or 'N/A')
+                            difficulty = str(machine.get('difficulty_text', 'N/A') or 'N/A')
+                            is_owned_root = machine.get('is_owned_root', False)
+                            rooted = "Yes" if is_owned_root else "No"
+                            os = str(machine.get('os', 'N/A') or 'N/A')
+                            points = str(machine.get('root_points', 'N/A') or 'N/A')
+                            
+                            table.add_row(name, difficulty, rooted, os, points)
+                        
+                        console.print(table)
+                    else:
+                        console.print("[yellow]No machines data available[/yellow]")
                 else:
                     console.print(Panel.fit(
                         f"[bold green]Season Machines[/bold green]\n"
