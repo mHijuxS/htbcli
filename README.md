@@ -25,11 +25,8 @@ git clone <repository-url>
 cd htbcli
 
 # Install using uv (recommended)
-uv pip install -e .
 
-# Or install dependencies manually
-pip install -r requirements.txt
-pip install -e .
+uv tool install .
 ```
 
 ### Install dependencies only
