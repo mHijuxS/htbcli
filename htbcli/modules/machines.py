@@ -1,0 +1,454 @@
+"""
+Machines module for HTB CLI
+"""
+
+import click
+from typing import Dict, Any, Optional
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+
+from ..api_client import HTBAPIClient
+
+console = Console()
+
+class MachinesModule:
+    """Module for handling machine-related API calls"""
+    
+    def __init__(self, api_client: HTBAPIClient):
+        self.api = api_client
+    
+    def get_machine_active(self) -> Dict[str, Any]:
+        """Get active machine details"""
+        return self.api.get("/machine/active")
+    
+    def get_machine_activity(self, machine_id: int) -> Dict[str, Any]:
+        """Get machine activity"""
+        return self.api.get(f"/machine/activity/{machine_id}")
+    
+    def get_machine_changelog(self, machine_id: int) -> Dict[str, Any]:
+        """Get machine changelog"""
+        return self.api.get(f"/machine/changelog/{machine_id}")
+    
+    def get_machine_creators(self, machine_id: int) -> Dict[str, Any]:
+        """Get machine creators"""
+        return self.api.get(f"/machine/creators/{machine_id}")
+    
+    def get_machine_graph_activity(self, machine_id: int, period: str) -> Dict[str, Any]:
+        """Get machine graph activity"""
+        return self.api.get(f"/machine/graph/activity/{machine_id}/{period}")
+    
+    def get_machine_graph_matrix(self, machine_id: int) -> Dict[str, Any]:
+        """Get machine graph matrix"""
+        return self.api.get(f"/machine/graph/matrix/{machine_id}")
+    
+    def get_machine_graph_owns_difficulty(self, machine_id: int) -> Dict[str, Any]:
+        """Get machine graph difficulty"""
+        return self.api.get(f"/machine/graph/owns/difficulty/{machine_id}")
+    
+    def get_machine_list_retired_paginated(self, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
+        """Get paginated list of retired machines"""
+        params = {
+            "page": page,
+            "per_page": per_page
+        }
+        return self.api.get("/machine/list/retired/paginated", params=params)
+    
+    def submit_machine_flag(self, flag: str) -> Dict[str, Any]:
+        """Submit flag for machine"""
+        return self.api.post("/machine/own", json_data={"flag": flag})
+    
+    def get_machine_owns_top(self, machine_id: int) -> Dict[str, Any]:
+        """Get top 25 owners for a machine"""
+        return self.api.get(f"/machine/owns/top/{machine_id}")
+    
+    def get_machine_paginated(self, page: int = 1, per_page: int = 20, status: Optional[str] = None) -> Dict[str, Any]:
+        """Get paginated list of machines"""
+        params = {
+            "page": page,
+            "per_page": per_page
+        }
+        if status:
+            params["status"] = status
+        return self.api.get("/machine/paginated", params=params)
+    
+    def get_machine_profile(self, machine_slug: str) -> Dict[str, Any]:
+        """Get machine profile by slug"""
+        return self.api.get(f"/machine/profile/{machine_slug}")
+    
+    def get_machine_recommended(self) -> Dict[str, Any]:
+        """Get recommended machines"""
+        return self.api.get("/machine/recommended")
+    
+    def get_machine_recommended_retired(self) -> Dict[str, Any]:
+        """Get recommended retired machines"""
+        return self.api.get("/machine/recommended/retired")
+    
+    def submit_machine_review(self, machine_id: int, review_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Submit machine review"""
+        return self.api.post("/machine/review", json_data=review_data)
+    
+    def get_machine_reviews_user(self, machine_id: int) -> Dict[str, Any]:
+        """Get user's review for machine"""
+        return self.api.get(f"/machine/reviews/user/{machine_id}")
+    
+    def get_machine_reviews(self, machine_id: int) -> Dict[str, Any]:
+        """Get machine reviews"""
+        return self.api.get(f"/machine/reviews/{machine_id}")
+    
+    def get_machine_tags_list(self) -> Dict[str, Any]:
+        """Get machine tags list"""
+        return self.api.get("/machine/tags/list")
+    
+    def get_machine_tags(self, machine_id: int) -> Dict[str, Any]:
+        """Get machine tags"""
+        return self.api.get(f"/machine/tags/{machine_id}")
+    
+    def get_machine_todo_paginated(self, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
+        """Get machine todo list"""
+        params = {
+            "page": page,
+            "per_page": per_page
+        }
+        return self.api.get("/machine/todo/paginated", params=params)
+    
+    def get_machine_unreleased(self) -> Dict[str, Any]:
+        """Get unreleased machines"""
+        return self.api.get("/machine/unreleased")
+    
+    def get_machine_walkthrough_random(self) -> Dict[str, Any]:
+        """Get random walkthrough"""
+        return self.api.get("/machine/walkthrough/random")
+    
+    def get_machine_walkthroughs_language_list(self) -> Dict[str, Any]:
+        """Get walkthrough language options"""
+        return self.api.get("/machine/walkthroughs/language/list")
+    
+    def get_machine_walkthroughs_official_feedback_choices(self) -> Dict[str, Any]:
+        """Get feedback choices"""
+        return self.api.get("/machine/walkthroughs/official/feedback-choices")
+    
+    def get_machine_walkthroughs(self, machine_id: int) -> Dict[str, Any]:
+        """Get machine walkthroughs"""
+        return self.api.get(f"/machine/walkthroughs/{machine_id}")
+    
+    def get_machine_writeup(self, machine_id: int) -> Dict[str, Any]:
+        """Get machine writeup"""
+        return self.api.get(f"/machine/writeup/{machine_id}")
+    
+    def get_machines_adventure(self, machine_id: int) -> Dict[str, Any]:
+        """Get machine adventure"""
+        return self.api.get(f"/machines/{machine_id}/adventure")
+    
+    def get_machines_tasks(self, machine_id: int) -> Dict[str, Any]:
+        """Get machine tasks"""
+        return self.api.get(f"/machines/{machine_id}/tasks")
+    
+    def update_todo(self, product: str, product_id: int, todo_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Update todo list"""
+        return self.api.post(f"/{product}/todo/update/{product_id}", json_data=todo_data)
+
+# Click commands
+@click.group()
+def machines():
+    """Machine-related commands"""
+    pass
+
+@machines.command()
+def active():
+    """Get currently active machine"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_active()
+        
+        if result and result.get('info'):
+            console.print(Panel.fit(
+                f"[bold green]Active Machine[/bold green]\n"
+                f"Name: {result.get('info', {}).get('name', 'N/A') or 'N/A'}\n"
+                f"OS: {result.get('info', {}).get('os', 'N/A') or 'N/A'}\n"
+                f"Difficulty: {result.get('info', {}).get('difficulty', 'N/A') or 'N/A'}\n"
+                f"Points: {result.get('info', {}).get('points', 'N/A') or 'N/A'}",
+                title="Active Machine"
+            ))
+        else:
+            console.print("[yellow]No active machine found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_id', type=int)
+def activity(machine_id):
+    """Get machine activity"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_activity(machine_id)
+        
+        if result and 'data' in result:
+            activity_data = result['data']
+            
+            table = Table(title=f"Machine Activity (ID: {machine_id})")
+            table.add_column("User", style="cyan")
+            table.add_column("Type", style="green")
+            table.add_column("Date", style="yellow")
+            table.add_column("Points", style="magenta")
+            
+            for activity in activity_data:
+                table.add_row(
+                    str(activity.get('user', 'N/A') or 'N/A'),
+                    str(activity.get('type', 'N/A') or 'N/A'),
+                    str(activity.get('date', 'N/A') or 'N/A'),
+                    str(activity.get('points', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No activity found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_id', type=int)
+def changelog(machine_id):
+    """Get machine changelog"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_changelog(machine_id)
+        
+        if result and 'data' in result:
+            changelog_data = result['data']
+            
+            table = Table(title=f"Machine Changelog (ID: {machine_id})")
+            table.add_column("Date", style="cyan")
+            table.add_column("Type", style="green")
+            table.add_column("Description", style="yellow")
+            
+            for change in changelog_data:
+                table.add_row(
+                    str(change.get('date', 'N/A') or 'N/A'),
+                    str(change.get('type', 'N/A') or 'N/A'),
+                    str(change.get('description', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No changelog found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_id', type=int)
+def creators(machine_id):
+    """Get machine creators"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_creators(machine_id)
+        
+        if result and 'data' in result:
+            creators_data = result['data']
+            
+            table = Table(title=f"Machine Creators (ID: {machine_id})")
+            table.add_column("Username", style="cyan")
+            table.add_column("Role", style="green")
+            table.add_column("Avatar", style="yellow")
+            
+            for creator in creators_data:
+                table.add_row(
+                    str(creator.get('username', 'N/A') or 'N/A'),
+                    str(creator.get('role', 'N/A') or 'N/A'),
+                    str(creator.get('avatar', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No creators found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.option('--page', default=1, help='Page number')
+@click.option('--per-page', default=20, help='Results per page')
+@click.option('--status', type=click.Choice(['active', 'retired']), help='Machine status')
+def list(page, per_page, status):
+    """List machines"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        
+        if status == 'retired':
+            result = machines_module.get_machine_list_retired_paginated(page, per_page)
+        else:
+            result = machines_module.get_machine_paginated(page, per_page, status)
+        
+        if result and 'data' in result:
+            machines_data = result['data']['data'] if isinstance(result['data'], dict) and 'data' in result['data'] else result['data']
+            
+            table = Table(title=f"Machines (Page {page})")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("OS", style="yellow")
+            table.add_column("Difficulty", style="magenta")
+            table.add_column("Points", style="blue")
+            table.add_column("Status", style="red")
+            
+            try:
+                for machine in machines_data:
+                    table.add_row(
+                        str(machine.get('id', 'N/A') or 'N/A'),
+                        str(machine.get('name', 'N/A') or 'N/A'),
+                        str(machine.get('os', 'N/A') or 'N/A'),
+                        str(machine.get('difficulty', 'N/A') or 'N/A'),
+                        str(machine.get('points', 'N/A') or 'N/A'),
+                        str(machine.get('status', 'N/A') or 'N/A')
+                    )
+                
+                console.print(table)
+            except Exception as e:
+                console.print(f"[yellow]Error processing machines data: {e}[/yellow]")
+        else:
+            console.print("[yellow]No machines found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_slug')
+def profile(machine_slug):
+    """Get machine profile by slug"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_profile(machine_slug)
+        
+        if result and 'info' in result:
+            info = result['info']
+            console.print(Panel.fit(
+                f"[bold green]Machine Profile[/bold green]\n"
+                f"Name: {info.get('name', 'N/A') or 'N/A'}\n"
+                f"OS: {info.get('os', 'N/A') or 'N/A'}\n"
+                f"Difficulty: {info.get('difficulty', 'N/A') or 'N/A'}\n"
+                f"Points: {info.get('points', 'N/A') or 'N/A'}\n"
+                f"Status: {info.get('status', 'N/A') or 'N/A'}\n"
+                f"IP: {info.get('ip', 'N/A') or 'N/A'}\n"
+                f"User Owns: {info.get('user_owns_count', 'N/A') or 'N/A'}\n"
+                f"Root Owns: {info.get('root_owns_count', 'N/A') or 'N/A'}",
+                title=f"Machine: {machine_slug}"
+            ))
+        else:
+            console.print("[yellow]Machine not found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('flag')
+def submit(flag):
+    """Submit flag for machine"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.submit_machine_flag(flag)
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Flag Submission Result[/bold green]\n"
+                f"Status: {result.get('status', 'N/A') or 'N/A'}\n"
+                f"Message: {result.get('message', 'N/A') or 'N/A'}",
+                title="Flag Submission"
+            ))
+        else:
+            console.print("[yellow]No result from flag submission[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+def recommended():
+    """Get recommended machines"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_recommended()
+        
+        if result and 'data' in result:
+            recommended_data = result['data']
+            
+            table = Table(title="Recommended Machines")
+            table.add_column("Name", style="cyan")
+            table.add_column("OS", style="green")
+            table.add_column("Difficulty", style="yellow")
+            table.add_column("Points", style="magenta")
+            
+            for machine in recommended_data:
+                table.add_row(
+                    str(machine.get('name', 'N/A') or 'N/A'),
+                    str(machine.get('os', 'N/A') or 'N/A'),
+                    str(machine.get('difficulty', 'N/A') or 'N/A'),
+                    str(machine.get('points', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No recommended machines found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+def tags():
+    """Get machine tags list"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_tags_list()
+        
+        if result and 'data' in result:
+            tags_data = result['data']
+            
+            table = Table(title="Machine Tags")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("Type", style="yellow")
+            
+            for tag in tags_data:
+                table.add_row(
+                    str(tag.get('id', 'N/A') or 'N/A'),
+                    str(tag.get('name', 'N/A') or 'N/A'),
+                    str(tag.get('type', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No tags found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+def unreleased():
+    """Get unreleased machines"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_unreleased()
+        
+        if result and 'data' in result:
+            unreleased_data = result['data']
+            
+            table = Table(title="Unreleased Machines")
+            table.add_column("Name", style="cyan")
+            table.add_column("OS", style="green")
+            table.add_column("Difficulty", style="yellow")
+            table.add_column("Release Date", style="magenta")
+            
+            for machine in unreleased_data:
+                table.add_row(
+                    str(machine.get('name', 'N/A') or 'N/A'),
+                    str(machine.get('os', 'N/A') or 'N/A'),
+                    str(machine.get('difficulty', 'N/A') or 'N/A'),
+                    str(machine.get('release_date', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No unreleased machines found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
