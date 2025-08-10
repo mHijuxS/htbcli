@@ -13,7 +13,8 @@ class Config:
     """Configuration class for HTB CLI"""
     
     # API Configuration
-    BASE_URL = "https://labs.hackthebox.com/api/v4"
+    BASE_URL_V4 = "https://labs.hackthebox.com/api/v4"
+    BASE_URL_V5 = "https://labs.hackthebox.com/api/v5"
     
     # Authentication
     API_TOKEN = os.getenv("HTB_TOKEN")
@@ -35,6 +36,7 @@ class Config:
         return {
             "Authorization": f"Bearer {cls.API_TOKEN}",
             "Content-Type": "application/json",
+            "accept": "application/json",
             "User-Agent": "HTB-CLI/1.0.0"
         }
     

@@ -79,7 +79,9 @@ def team():
 @team.command()
 @click.option('--page', default=1, help='Page number')
 @click.option('--per-page', default=20, help='Results per page')
-def list(page, per_page):
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def list(page, per_page, responses, option):
     """List teams"""
     try:
         api_client = HTBAPIClient()
@@ -89,28 +91,53 @@ def list(page, per_page):
         if result and 'data' in result:
             teams_data = result['data']['data'] if isinstance(result['data'], dict) and 'data' in result['data'] else result['data']
             
-            table = Table(title=f"Teams (Page {page})")
-            table.add_column("ID", style="cyan")
-            table.add_column("Name", style="green")
-            table.add_column("Type", style="yellow")
-            table.add_column("Status", style="magenta")
-            table.add_column("Members", style="blue")
-            table.add_column("Points", style="red")
-            
-            try:
+            if responses:
+                # Show all available fields for first team
+                if teams_data:
+                    first_team = teams_data[0]
+                    console.print(Panel.fit(
+                        f"[bold green]All Available Fields for Teams[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in first_team.items()])}",
+                        title=f"Teams - All Fields (First Item, Page {page})"
+                    ))
+            elif option:
+                # Show only specified fields
+                table = Table(title=f"Teams - Selected Fields (Page {page})")
+                table.add_column("ID", style="cyan")
+                for field in option:
+                    table.add_column(field.title(), style="green")
+                
                 for team in teams_data:
-                    table.add_row(
-                        str(team.get('id', 'N/A') or 'N/A'),
-                        str(team.get('name', 'N/A') or 'N/A'),
-                        str(team.get('type', 'N/A') or 'N/A'),
-                        str(team.get('status', 'N/A') or 'N/A'),
-                        str(team.get('members_count', 'N/A') or 'N/A'),
-                        str(team.get('points', 'N/A') or 'N/A')
-                    )
+                    row = [str(team.get('id', 'N/A') or 'N/A')]
+                    for field in option:
+                        row.append(str(team.get(field, 'N/A') or 'N/A'))
+                    table.add_row(*row)
                 
                 console.print(table)
-            except Exception as e:
-                console.print(f"[yellow]Error processing teams data: {e}[/yellow]")
+            else:
+                # Default view
+                table = Table(title=f"Teams (Page {page})")
+                table.add_column("ID", style="cyan")
+                table.add_column("Name", style="green")
+                table.add_column("Type", style="yellow")
+                table.add_column("Status", style="magenta")
+                table.add_column("Members", style="blue")
+                table.add_column("Points", style="red")
+                
+                try:
+                    for team in teams_data:
+                        table.add_row(
+                            str(team.get('id', 'N/A') or 'N/A'),
+                            str(team.get('name', 'N/A') or 'N/A'),
+                            str(team.get('type', 'N/A') or 'N/A'),
+                            str(team.get('status', 'N/A') or 'N/A'),
+                            str(team.get('members_count', 'N/A') or 'N/A'),
+                            str(team.get('points', 'N/A') or 'N/A')
+                        )
+                    
+                    console.print(table)
+                except Exception as e:
+                    console.print(f"[yellow]Error processing teams data: {e}[/yellow]")
         else:
             console.print("[yellow]No teams found[/yellow]")
     except Exception as e:
@@ -118,7 +145,9 @@ def list(page, per_page):
 
 @team.command()
 @click.argument('team_slug')
-def info(team_slug):
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def info(team_slug, responses, option):
     """Get team info by slug"""
     try:
         api_client = HTBAPIClient()
@@ -127,16 +156,41 @@ def info(team_slug):
         
         if result and 'info' in result:
             info = result['info']
-            console.print(Panel.fit(
-                f"[bold green]Team Info[/bold green]\n"
-                f"Name: {info.get('name', 'N/A') or 'N/A'}\n"
-                f"Type: {info.get('type', 'N/A') or 'N/A'}\n"
-                f"Status: {info.get('status', 'N/A') or 'N/A'}\n"
-                f"Members: {info.get('members_count', 'N/A') or 'N/A'}\n"
-                f"Points: {info.get('points', 'N/A') or 'N/A'}\n"
-                f"Description: {info.get('description', 'N/A') or 'N/A'}",
-                title=f"Team: {team_slug}"
-            ))
+            
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All Available Fields for Team Info[/bold green]\n"
+                    f"{chr(10).join([f'{k}: {v}' for k, v in info.items()])}",
+                    title=f"Team: {team_slug} - All Fields"
+                ))
+            elif option:
+                # Show only specified fields
+                selected_info = {}
+                for field in option:
+                    if field in info:
+                        selected_info[field] = info[field]
+                    else:
+                        console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
+                
+                if selected_info:
+                    console.print(Panel.fit(
+                        f"[bold green]Selected Fields[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in selected_info.items()])}",
+                        title=f"Team: {team_slug} - Selected Fields"
+                    ))
+            else:
+                # Default view
+                console.print(Panel.fit(
+                    f"[bold green]Team Info[/bold green]\n"
+                    f"Name: {info.get('name', 'N/A') or 'N/A'}\n"
+                    f"Type: {info.get('type', 'N/A') or 'N/A'}\n"
+                    f"Status: {info.get('status', 'N/A') or 'N/A'}\n"
+                    f"Members: {info.get('members_count', 'N/A') or 'N/A'}\n"
+                    f"Points: {info.get('points', 'N/A') or 'N/A'}\n"
+                    f"Description: {info.get('description', 'N/A') or 'N/A'}",
+                    title=f"Team: {team_slug}"
+                ))
         else:
             console.print("[yellow]Team not found[/yellow]")
     except Exception as e:

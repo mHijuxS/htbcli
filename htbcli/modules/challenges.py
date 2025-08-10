@@ -30,9 +30,9 @@ class ChallengesModule:
         """Get challenge changelog"""
         return self.api.get(f"/challenge/changelog/{challenge_id}")
     
-    def get_challenge_download(self, challenge_id: int) -> Dict[str, Any]:
+    def get_challenge_download(self, challenge_id: int) -> bytes:
         """Download challenge files"""
-        return self.api.get(f"/challenge/download/{challenge_id}")
+        return self.api.get_binary(f"/challenge/download/{challenge_id}")
     
     def get_challenge_info(self, challenge_slug: str) -> Dict[str, Any]:
         """Get challenge info by slug"""
@@ -78,9 +78,9 @@ class ChallengesModule:
         """Get challenge writeup"""
         return self.api.get(f"/challenge/{challenge_id}/writeup")
     
-    def get_challenge_writeup_official(self, challenge_id: int) -> Dict[str, Any]:
+    def get_challenge_writeup_official(self, challenge_id: int) -> bytes:
         """Get official challenge writeup"""
-        return self.api.get(f"/challenge/{challenge_id}/writeup/official")
+        return self.api.get_binary(f"/challenge/{challenge_id}/writeup/official")
     
     def get_challenges(self, page: int = 1, per_page: int = 20, difficulty: Optional[str] = None, category: Optional[str] = None) -> Dict[str, Any]:
         """Get list of challenges"""
@@ -109,7 +109,9 @@ def challenges():
 @click.option('--per-page', default=20, help='Results per page')
 @click.option('--difficulty', type=click.Choice(['Easy', 'Medium', 'Hard', 'Insane']), help='Challenge difficulty')
 @click.option('--category', help='Challenge category')
-def list(page, per_page, difficulty, category):
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def list(page, per_page, difficulty, category, responses, option):
     """List challenges"""
     try:
         api_client = HTBAPIClient()
@@ -119,28 +121,53 @@ def list(page, per_page, difficulty, category):
         if result and 'data' in result:
             challenges_data = result['data']
             
-            table = Table(title=f"Challenges (Page {page})")
-            table.add_column("ID", style="cyan")
-            table.add_column("Name", style="green")
-            table.add_column("Category", style="yellow")
-            table.add_column("Difficulty", style="magenta")
-            table.add_column("Points", style="blue")
-            table.add_column("Solves", style="red")
-            
-            try:
+            if responses:
+                # Show all available fields for first challenge
+                if challenges_data:
+                    first_challenge = challenges_data[0]
+                    console.print(Panel.fit(
+                        f"[bold green]All Available Fields for Challenges[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in first_challenge.items()])}",
+                        title=f"Challenges - All Fields (First Item, Page {page})"
+                    ))
+            elif option:
+                # Show only specified fields
+                table = Table(title=f"Challenges - Selected Fields (Page {page})")
+                table.add_column("ID", style="cyan")
+                for field in option:
+                    table.add_column(field.title(), style="green")
+                
                 for challenge in challenges_data:
-                    table.add_row(
-                        str(challenge.get('id', 'N/A') or 'N/A'),
-                        str(challenge.get('name', 'N/A') or 'N/A'),
-                        str(challenge.get('category_name', 'N/A') or 'N/A'),
-                        str(challenge.get('difficulty', 'N/A') or 'N/A'),
-                        str(challenge.get('points', 'N/A') or 'N/A'),
-                        str(challenge.get('solves', 'N/A') or 'N/A')
-                    )
+                    row = [str(challenge.get('id', 'N/A') or 'N/A')]
+                    for field in option:
+                        row.append(str(challenge.get(field, 'N/A') or 'N/A'))
+                    table.add_row(*row)
                 
                 console.print(table)
-            except Exception as e:
-                console.print(f"[yellow]Error processing challenges data: {e}[/yellow]")
+            else:
+                # Default view
+                table = Table(title=f"Challenges (Page {page})")
+                table.add_column("ID", style="cyan")
+                table.add_column("Name", style="green")
+                table.add_column("Category", style="yellow")
+                table.add_column("Difficulty", style="magenta")
+                table.add_column("Points", style="blue")
+                table.add_column("Solves", style="red")
+                
+                try:
+                    for challenge in challenges_data:
+                        table.add_row(
+                            str(challenge.get('id', 'N/A') or 'N/A'),
+                            str(challenge.get('name', 'N/A') or 'N/A'),
+                            str(challenge.get('category_name', 'N/A') or 'N/A'),
+                            str(challenge.get('difficulty', 'N/A') or 'N/A'),
+                            str(challenge.get('points', 'N/A') or 'N/A'),
+                            str(challenge.get('solves', 'N/A') or 'N/A')
+                        )
+                    
+                    console.print(table)
+                except Exception as e:
+                    console.print(f"[yellow]Error processing challenges data: {e}[/yellow]")
         else:
             console.print("[yellow]No challenges found[/yellow]")
     except Exception as e:
@@ -224,38 +251,67 @@ def submit(flag):
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
-def categories():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def categories(responses, option):
     """Get challenge categories"""
     try:
         api_client = HTBAPIClient()
         challenges_module = ChallengesModule(api_client)
         result = challenges_module.get_challenge_categories_list()
         
-        if result and 'data' in result:
-            categories_data = result['data']
+        if result and ('data' in result or 'info' in result):
+            categories_data = result.get('data') or result.get('info')
             
-            table = Table(title="Challenge Categories")
-            table.add_column("ID", style="cyan")
-            table.add_column("Name", style="green")
-            table.add_column("Description", style="yellow")
-            table.add_column("Count", style="magenta")
-            
-            for category in categories_data:
-                table.add_row(
-                    str(category.get('id', 'N/A') or 'N/A'),
-                    str(category.get('name', 'N/A') or 'N/A'),
-                    str(category.get('description', 'N/A') or 'N/A'),
-                    str(category.get('count', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+            if responses:
+                # Show all available fields for first category
+                if categories_data:
+                    first_category = categories_data[0]
+                    console.print(Panel.fit(
+                        f"[bold green]All Available Fields for Challenge Categories[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in first_category.items()])}",
+                        title="Challenge Categories - All Fields (First Item)"
+                    ))
+            elif option:
+                # Show only specified fields
+                table = Table(title="Challenge Categories - Selected Fields")
+                table.add_column("ID", style="cyan")
+                for field in option:
+                    table.add_column(field.title(), style="green")
+                
+                for category in categories_data:
+                    row = [str(category.get('id', 'N/A') or 'N/A')]
+                    for field in option:
+                        row.append(str(category.get(field, 'N/A') or 'N/A'))
+                    table.add_row(*row)
+                
+                console.print(table)
+            else:
+                # Default view
+                table = Table(title="Challenge Categories")
+                table.add_column("ID", style="cyan")
+                table.add_column("Name", style="green")
+                table.add_column("Description", style="yellow")
+                table.add_column("Count", style="magenta")
+                
+                for category in categories_data:
+                    table.add_row(
+                        str(category.get('id', 'N/A') or 'N/A'),
+                        str(category.get('name', 'N/A') or 'N/A'),
+                        str(category.get('description', 'N/A') or 'N/A'),
+                        str(category.get('count', 'N/A') or 'N/A')
+                    )
+                
+                console.print(table)
         else:
             console.print("[yellow]No categories found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
-def recommended():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def recommended(responses, option):
     """Get recommended challenges"""
     try:
         api_client = HTBAPIClient()
@@ -265,28 +321,55 @@ def recommended():
         if result and 'data' in result:
             recommended_data = result['data']
             
-            table = Table(title="Recommended Challenges")
-            table.add_column("Name", style="cyan")
-            table.add_column("Category", style="green")
-            table.add_column("Difficulty", style="yellow")
-            table.add_column("Points", style="magenta")
-            
-            for challenge in recommended_data:
-                table.add_row(
-                    str(challenge.get('name', 'N/A') or 'N/A'),
-                    str(challenge.get('category', 'N/A') or 'N/A'),
-                    str(challenge.get('difficulty', 'N/A') or 'N/A'),
-                    str(challenge.get('points', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+            if responses:
+                # Show all available fields for first recommended challenge
+                if recommended_data:
+                    first_challenge = recommended_data[0]
+                    console.print(Panel.fit(
+                        f"[bold green]All Available Fields for Recommended Challenges[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in first_challenge.items()])}",
+                        title="Recommended Challenges - All Fields (First Item)"
+                    ))
+            elif option:
+                # Show only specified fields
+                table = Table(title="Recommended Challenges - Selected Fields")
+                table.add_column("Name", style="cyan")
+                for field in option:
+                    table.add_column(field.title(), style="green")
+                
+                for challenge in recommended_data:
+                    row = [str(challenge.get('name', 'N/A') or 'N/A')]
+                    for field in option:
+                        row.append(str(challenge.get(field, 'N/A') or 'N/A'))
+                    table.add_row(*row)
+                
+                console.print(table)
+            else:
+                # Default view
+                table = Table(title="Recommended Challenges")
+                table.add_column("Name", style="cyan")
+                table.add_column("Category", style="green")
+                table.add_column("Difficulty", style="yellow")
+                table.add_column("Points", style="magenta")
+                
+                for challenge in recommended_data:
+                    table.add_row(
+                        str(challenge.get('name', 'N/A') or 'N/A'),
+                        str(challenge.get('category', 'N/A') or 'N/A'),
+                        str(challenge.get('difficulty', 'N/A') or 'N/A'),
+                        str(challenge.get('points', 'N/A') or 'N/A')
+                    )
+                
+                console.print(table)
         else:
             console.print("[yellow]No recommended challenges found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
-def suggested():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def suggested(responses, option):
     """Get suggested challenges"""
     try:
         api_client = HTBAPIClient()
@@ -296,21 +379,46 @@ def suggested():
         if result and 'data' in result:
             suggested_data = result['data']
             
-            table = Table(title="Suggested Challenges")
-            table.add_column("Name", style="cyan")
-            table.add_column("Category", style="green")
-            table.add_column("Difficulty", style="yellow")
-            table.add_column("Points", style="magenta")
-            
-            for challenge in suggested_data:
-                table.add_row(
-                    str(challenge.get('name', 'N/A') or 'N/A'),
-                    str(challenge.get('category', 'N/A') or 'N/A'),
-                    str(challenge.get('difficulty', 'N/A') or 'N/A'),
-                    str(challenge.get('points', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+            if responses:
+                # Show all available fields for first suggested challenge
+                if suggested_data:
+                    first_challenge = suggested_data[0]
+                    console.print(Panel.fit(
+                        f"[bold green]All Available Fields for Suggested Challenges[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in first_challenge.items()])}",
+                        title="Suggested Challenges - All Fields (First Item)"
+                    ))
+            elif option:
+                # Show only specified fields
+                table = Table(title="Suggested Challenges - Selected Fields")
+                table.add_column("Name", style="cyan")
+                for field in option:
+                    table.add_column(field.title(), style="green")
+                
+                for challenge in suggested_data:
+                    row = [str(challenge.get('name', 'N/A') or 'N/A')]
+                    for field in option:
+                        row.append(str(challenge.get(field, 'N/A') or 'N/A'))
+                    table.add_row(*row)
+                
+                console.print(table)
+            else:
+                # Default view
+                table = Table(title="Suggested Challenges")
+                table.add_column("Name", style="cyan")
+                table.add_column("Category", style="green")
+                table.add_column("Difficulty", style="yellow")
+                table.add_column("Points", style="magenta")
+                
+                for challenge in suggested_data:
+                    table.add_row(
+                        str(challenge.get('name', 'N/A') or 'N/A'),
+                        str(challenge.get('category', 'N/A') or 'N/A'),
+                        str(challenge.get('difficulty', 'N/A') or 'N/A'),
+                        str(challenge.get('points', 'N/A') or 'N/A')
+                    )
+                
+                console.print(table)
         else:
             console.print("[yellow]No suggested challenges found[/yellow]")
     except Exception as e:
@@ -318,7 +426,9 @@ def suggested():
 
 @challenges.command()
 @click.argument('challenge_id', type=int)
-def activity(challenge_id):
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def activity(challenge_id, responses, option):
     """Get challenge activity"""
     try:
         api_client = HTBAPIClient()
@@ -328,21 +438,46 @@ def activity(challenge_id):
         if result and 'data' in result:
             activity_data = result['data']
             
-            table = Table(title=f"Challenge Activity (ID: {challenge_id})")
-            table.add_column("User", style="cyan")
-            table.add_column("Type", style="green")
-            table.add_column("Date", style="yellow")
-            table.add_column("Points", style="magenta")
-            
-            for activity in activity_data:
-                table.add_row(
-                    str(activity.get('user', 'N/A') or 'N/A'),
-                    str(activity.get('type', 'N/A') or 'N/A'),
-                    str(activity.get('date', 'N/A') or 'N/A'),
-                    str(activity.get('points', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+            if responses:
+                # Show all available fields for first activity
+                if activity_data:
+                    first_activity = activity_data[0]
+                    console.print(Panel.fit(
+                        f"[bold green]All Available Fields for Challenge Activity[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in first_activity.items()])}",
+                        title=f"Challenge Activity - All Fields (First Item, ID: {challenge_id})"
+                    ))
+            elif option:
+                # Show only specified fields
+                table = Table(title=f"Challenge Activity - Selected Fields (ID: {challenge_id})")
+                table.add_column("User", style="cyan")
+                for field in option:
+                    table.add_column(field.title(), style="green")
+                
+                for activity in activity_data:
+                    row = [str(activity.get('user', 'N/A') or 'N/A')]
+                    for field in option:
+                        row.append(str(activity.get(field, 'N/A') or 'N/A'))
+                    table.add_row(*row)
+                
+                console.print(table)
+            else:
+                # Default view
+                table = Table(title=f"Challenge Activity (ID: {challenge_id})")
+                table.add_column("User", style="cyan")
+                table.add_column("Type", style="green")
+                table.add_column("Date", style="yellow")
+                table.add_column("Points", style="magenta")
+                
+                for activity in activity_data:
+                    table.add_row(
+                        str(activity.get('user', 'N/A') or 'N/A'),
+                        str(activity.get('type', 'N/A') or 'N/A'),
+                        str(activity.get('date', 'N/A') or 'N/A'),
+                        str(activity.get('points', 'N/A') or 'N/A')
+                    )
+                
+                console.print(table)
         else:
             console.print("[yellow]No activity found[/yellow]")
     except Exception as e:
@@ -350,7 +485,9 @@ def activity(challenge_id):
 
 @challenges.command()
 @click.argument('challenge_id', type=int)
-def changelog(challenge_id):
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def changelog(challenge_id, responses, option):
     """Get challenge changelog"""
     try:
         api_client = HTBAPIClient()
@@ -360,20 +497,231 @@ def changelog(challenge_id):
         if result and 'data' in result:
             changelog_data = result['data']
             
-            table = Table(title=f"Challenge Changelog (ID: {challenge_id})")
-            table.add_column("Date", style="cyan")
-            table.add_column("Type", style="green")
-            table.add_column("Description", style="yellow")
+            if responses:
+                # Show all available fields for first changelog entry
+                if changelog_data:
+                    first_change = changelog_data[0]
+                    console.print(Panel.fit(
+                        f"[bold green]All Available Fields for Challenge Changelog[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in first_change.items()])}",
+                        title=f"Challenge Changelog - All Fields (First Item, ID: {challenge_id})"
+                    ))
+            elif option:
+                # Show only specified fields
+                table = Table(title=f"Challenge Changelog - Selected Fields (ID: {challenge_id})")
+                table.add_column("Date", style="cyan")
+                for field in option:
+                    table.add_column(field.title(), style="green")
+                
+                for change in changelog_data:
+                    row = [str(change.get('date', 'N/A') or 'N/A')]
+                    for field in option:
+                        row.append(str(change.get(field, 'N/A') or 'N/A'))
+                    table.add_row(*row)
+                
+                console.print(table)
+            else:
+                # Default view
+                table = Table(title=f"Challenge Changelog (ID: {challenge_id})")
+                table.add_column("Date", style="cyan")
+                table.add_column("Type", style="green")
+                table.add_column("Description", style="yellow")
+                
+                for change in changelog_data:
+                    table.add_row(
+                        str(change.get('date', 'N/A') or 'N/A'),
+                        str(change.get('type', 'N/A') or 'N/A'),
+                        str(change.get('description', 'N/A') or 'N/A')
+                    )
+                
+                console.print(table)
+        else:
+            console.print("[yellow]No changelog found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@challenges.command()
+@click.argument('challenge_id', type=int)
+@click.option('--output', '-o', help='Output filename for the downloaded file')
+def download(challenge_id, output):
+    """Download challenge files"""
+    try:
+        api_client = HTBAPIClient()
+        challenges_module = ChallengesModule(api_client)
+        result = challenges_module.get_challenge_download(challenge_id)
+        
+        if result:
+            # Generate filename if not provided
+            if not output:
+                output = f"challenge_{challenge_id}.zip"
             
-            for change in changelog_data:
+            # Write binary data to file
+            with open(output, 'wb') as f:
+                f.write(result)
+            
+            console.print(Panel.fit(
+                f"[bold green]Challenge Download Successful[/bold green]\n"
+                f"Challenge ID: {challenge_id}\n"
+                f"File saved as: {output}\n"
+                f"Size: {len(result)} bytes",
+                title="Challenge Download"
+            ))
+        else:
+            console.print("[yellow]No download result[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@challenges.command()
+@click.argument('challenge_id', type=int)
+def start(challenge_id):
+    """Start a challenge"""
+    try:
+        api_client = HTBAPIClient()
+        challenges_module = ChallengesModule(api_client)
+        result = challenges_module.start_challenge(challenge_id)
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Challenge Start[/bold green]\n"
+                f"Challenge ID: {challenge_id}\n"
+                f"Status: {result.get('status', 'N/A') or 'N/A'}\n"
+                f"Message: {result.get('message', 'N/A') or 'N/A'}",
+                title="Challenge Start"
+            ))
+        else:
+            console.print("[yellow]No start result[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@challenges.command()
+@click.argument('challenge_id', type=int)
+def stop(challenge_id):
+    """Stop a challenge"""
+    try:
+        api_client = HTBAPIClient()
+        challenges_module = ChallengesModule(api_client)
+        result = challenges_module.stop_challenge(challenge_id)
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Challenge Stop[/bold green]\n"
+                f"Challenge ID: {challenge_id}\n"
+                f"Status: {result.get('status', 'N/A') or 'N/A'}\n"
+                f"Message: {result.get('message', 'N/A') or 'N/A'}",
+                title="Challenge Stop"
+            ))
+        else:
+            console.print("[yellow]No stop result[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@challenges.command()
+@click.argument('challenge_id', type=int)
+def writeup(challenge_id):
+    """Get challenge writeup"""
+    try:
+        api_client = HTBAPIClient()
+        challenges_module = ChallengesModule(api_client)
+        result = challenges_module.get_challenge_writeup(challenge_id)
+        
+        if result and 'data' in result and 'official' in result['data']:
+            writeup_data = result['data']['official']
+            
+            console.print(Panel.fit(
+                f"[bold green]Challenge Writeup[/bold green]\n"
+                f"Challenge ID: {challenge_id}\n"
+                f"Filename: {writeup_data.get('filename', 'N/A') or 'N/A'}\n"
+                f"SHA256: {writeup_data.get('sha256', 'N/A') or 'N/A'}\n"
+                f"URL: {writeup_data.get('url', 'N/A') or 'N/A'}\n"
+                f"Video URL: {writeup_data.get('video_url', 'N/A') or 'N/A'}",
+                title="Challenge Writeup"
+            ))
+        else:
+            console.print("[yellow]No writeup found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@challenges.command()
+@click.argument('challenge_id', type=int)
+@click.option('--output', '-o', help='Output filename for the downloaded file')
+def writeup_official(challenge_id, output):
+    """Get official challenge writeup"""
+    try:
+        api_client = HTBAPIClient()
+        challenges_module = ChallengesModule(api_client)
+        result = challenges_module.get_challenge_writeup_official(challenge_id)
+        
+        if result:
+            # Generate filename if not provided
+            if not output:
+                output = f"challenge_{challenge_id}_writeup_official.pdf"
+            
+            # Write binary data to file
+            with open(output, 'wb') as f:
+                f.write(result)
+            
+            console.print(Panel.fit(
+                f"[bold green]Official Challenge Writeup Downloaded[/bold green]\n"
+                f"Challenge ID: {challenge_id}\n"
+                f"File saved as: {output}\n"
+                f"Size: {len(result)} bytes",
+                title="Official Challenge Writeup"
+            ))
+        else:
+            console.print("[yellow]No official writeup found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@challenges.command()
+@click.argument('review_id', type=int)
+def mark_helpful(review_id):
+    """Mark review as helpful"""
+    try:
+        api_client = HTBAPIClient()
+        challenges_module = ChallengesModule(api_client)
+        result = challenges_module.mark_review_helpful(review_id)
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Mark Review Helpful[/bold green]\n"
+                f"Review ID: {review_id}\n"
+                f"Status: {result.get('status', 'N/A') or 'N/A'}\n"
+                f"Message: {result.get('message', 'N/A') or 'N/A'}",
+                title="Mark Review Helpful"
+            ))
+        else:
+            console.print("[yellow]No result from marking review helpful[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@challenges.command()
+@click.argument('challenge_id', type=int)
+def reviews_user(challenge_id):
+    """Get user's review for challenge"""
+    try:
+        api_client = HTBAPIClient()
+        challenges_module = ChallengesModule(api_client)
+        result = challenges_module.get_challenge_reviews_user(challenge_id)
+        
+        if result and 'data' in result:
+            reviews_data = result['data']
+            
+            table = Table(title=f"User Reviews for Challenge (ID: {challenge_id})")
+            table.add_column("Review ID", style="cyan")
+            table.add_column("Rating", style="green")
+            table.add_column("Comment", style="yellow")
+            table.add_column("Date", style="magenta")
+            
+            for review in reviews_data:
                 table.add_row(
-                    str(change.get('date', 'N/A') or 'N/A'),
-                    str(change.get('type', 'N/A') or 'N/A'),
-                    str(change.get('description', 'N/A') or 'N/A')
+                    str(review.get('id', 'N/A') or 'N/A'),
+                    str(review.get('rating', 'N/A') or 'N/A'),
+                    str(review.get('comment', 'N/A') or 'N/A'),
+                    str(review.get('date', 'N/A') or 'N/A')
                 )
             
             console.print(table)
         else:
-            console.print("[yellow]No changelog found[/yellow]")
+            console.print("[yellow]No user reviews found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")

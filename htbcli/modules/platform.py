@@ -64,7 +64,9 @@ def platform():
     pass
 
 @platform.command()
-def announcements():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def announcements(responses, option):
     """Get announcements"""
     try:
         api_client = HTBAPIClient()
@@ -74,28 +76,55 @@ def announcements():
         if result and 'data' in result:
             announcements_data = result['data']
             
-            table = Table(title="Announcements")
-            table.add_column("ID", style="cyan")
-            table.add_column("Title", style="green")
-            table.add_column("Date", style="yellow")
-            table.add_column("Type", style="magenta")
-            
-            for announcement in announcements_data:
-                table.add_row(
-                    str(announcement.get('id', 'N/A') or 'N/A'),
-                    str(announcement.get('title', 'N/A') or 'N/A'),
-                    str(announcement.get('date', 'N/A') or 'N/A'),
-                    str(announcement.get('type', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+            if responses:
+                # Show all available fields for first announcement
+                if announcements_data:
+                    first_announcement = announcements_data[0]
+                    console.print(Panel.fit(
+                        f"[bold green]All Available Fields for Announcements[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in first_announcement.items()])}",
+                        title="Announcements - All Fields (First Item)"
+                    ))
+            elif option:
+                # Show only specified fields
+                table = Table(title="Announcements - Selected Fields")
+                table.add_column("ID", style="cyan")
+                for field in option:
+                    table.add_column(field.title(), style="green")
+                
+                for announcement in announcements_data:
+                    row = [str(announcement.get('id', 'N/A') or 'N/A')]
+                    for field in option:
+                        row.append(str(announcement.get(field, 'N/A') or 'N/A'))
+                    table.add_row(*row)
+                
+                console.print(table)
+            else:
+                # Default view
+                table = Table(title="Announcements")
+                table.add_column("ID", style="cyan")
+                table.add_column("Title", style="green")
+                table.add_column("Date", style="yellow")
+                table.add_column("Type", style="magenta")
+                
+                for announcement in announcements_data:
+                    table.add_row(
+                        str(announcement.get('id', 'N/A') or 'N/A'),
+                        str(announcement.get('title', 'N/A') or 'N/A'),
+                        str(announcement.get('date', 'N/A') or 'N/A'),
+                        str(announcement.get('type', 'N/A') or 'N/A')
+                    )
+                
+                console.print(table)
         else:
             console.print("[yellow]No announcements found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @platform.command()
-def changelogs():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def changelogs(responses, option):
     """Get platform changelogs"""
     try:
         api_client = HTBAPIClient()
@@ -105,51 +134,105 @@ def changelogs():
         if result and 'data' in result:
             changelogs_data = result['data']
             
-            table = Table(title="Platform Changelogs")
-            table.add_column("ID", style="cyan")
-            table.add_column("Title", style="green")
-            table.add_column("Date", style="yellow")
-            table.add_column("Type", style="magenta")
-            
-            for changelog in changelogs_data:
-                table.add_row(
-                    str(changelog.get('id', 'N/A') or 'N/A'),
-                    str(changelog.get('title', 'N/A') or 'N/A'),
-                    str(changelog.get('date', 'N/A') or 'N/A'),
-                    str(changelog.get('type', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+            if responses:
+                # Show all available fields for first changelog
+                if changelogs_data:
+                    first_changelog = changelogs_data[0]
+                    console.print(Panel.fit(
+                        f"[bold green]All Available Fields for Changelogs[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in first_changelog.items()])}",
+                        title="Changelogs - All Fields (First Item)"
+                    ))
+            elif option:
+                # Show only specified fields
+                table = Table(title="Changelogs - Selected Fields")
+                table.add_column("ID", style="cyan")
+                for field in option:
+                    table.add_column(field.title(), style="green")
+                
+                for changelog in changelogs_data:
+                    row = [str(changelog.get('id', 'N/A') or 'N/A')]
+                    for field in option:
+                        row.append(str(changelog.get(field, 'N/A') or 'N/A'))
+                    table.add_row(*row)
+                
+                console.print(table)
+            else:
+                # Default view
+                table = Table(title="Platform Changelogs")
+                table.add_column("ID", style="cyan")
+                table.add_column("Title", style="green")
+                table.add_column("Date", style="yellow")
+                table.add_column("Type", style="magenta")
+                
+                for changelog in changelogs_data:
+                    table.add_row(
+                        str(changelog.get('id', 'N/A') or 'N/A'),
+                        str(changelog.get('title', 'N/A') or 'N/A'),
+                        str(changelog.get('date', 'N/A') or 'N/A'),
+                        str(changelog.get('type', 'N/A') or 'N/A')
+                    )
+                
+                console.print(table)
         else:
             console.print("[yellow]No changelogs found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @platform.command()
-def content_stats():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def content_stats(responses, option):
     """Get content statistics"""
     try:
         api_client = HTBAPIClient()
         platform_module = PlatformModule(api_client)
         result = platform_module.get_content_stats()
         
-        if result and 'data' in result:
-            stats = result['data']
-            console.print(Panel.fit(
-                f"[bold green]Content Statistics[/bold green]\n"
-                f"Machines: {stats.get('machines', 'N/A') or 'N/A'}\n"
-                f"Challenges: {stats.get('challenges', 'N/A') or 'N/A'}\n"
-                f"Users: {stats.get('users', 'N/A') or 'N/A'}\n"
-                f"Teams: {stats.get('teams', 'N/A') or 'N/A'}",
-                title="Content Stats"
-            ))
+        if result and ('data' in result or result):
+            stats = result.get('data') or result
+            
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All Available Fields for Content Stats[/bold green]\n"
+                    f"{chr(10).join([f'{k}: {v}' for k, v in stats.items()])}",
+                    title="Content Stats - All Fields"
+                ))
+            elif option:
+                # Show only specified fields
+                selected_stats = {}
+                for field in option:
+                    if field in stats:
+                        selected_stats[field] = stats[field]
+                    else:
+                        console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
+                
+                if selected_stats:
+                    console.print(Panel.fit(
+                        f"[bold green]Selected Fields[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in selected_stats.items()])}",
+                        title="Content Stats - Selected Fields"
+                    ))
+            else:
+                # Default view
+                console.print(Panel.fit(
+                    f"[bold green]Content Statistics[/bold green]\n"
+                    f"Machines: {stats.get('machines', 'N/A') or 'N/A'}\n"
+                    f"Challenges: {stats.get('challenges', 'N/A') or 'N/A'}\n"
+                    f"Users: {stats.get('users', 'N/A') or 'N/A'}\n"
+                    f"Teams: {stats.get('teams', 'N/A') or 'N/A'}",
+                    title="Content Stats"
+                ))
         else:
             console.print("[yellow]No content stats found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @platform.command()
-def lab_list():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def lab_list(responses, option):
     """Get lab list (HTB servers)"""
     try:
         api_client = HTBAPIClient()
@@ -159,28 +242,55 @@ def lab_list():
         if result and 'data' in result:
             labs_data = result['data']
             
-            table = Table(title="HTB Labs/Servers")
-            table.add_column("ID", style="cyan")
-            table.add_column("Name", style="green")
-            table.add_column("Location", style="yellow")
-            table.add_column("Status", style="magenta")
-            
-            for lab in labs_data:
-                table.add_row(
-                    str(lab.get('id', 'N/A') or 'N/A'),
-                    str(lab.get('name', 'N/A') or 'N/A'),
-                    str(lab.get('location', 'N/A') or 'N/A'),
-                    str(lab.get('status', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+            if responses:
+                # Show all available fields for first lab
+                if labs_data:
+                    first_lab = labs_data[0]
+                    console.print(Panel.fit(
+                        f"[bold green]All Available Fields for Labs[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in first_lab.items()])}",
+                        title="Labs - All Fields (First Item)"
+                    ))
+            elif option:
+                # Show only specified fields
+                table = Table(title="Labs - Selected Fields")
+                table.add_column("ID", style="cyan")
+                for field in option:
+                    table.add_column(field.title(), style="green")
+                
+                for lab in labs_data:
+                    row = [str(lab.get('id', 'N/A') or 'N/A')]
+                    for field in option:
+                        row.append(str(lab.get(field, 'N/A') or 'N/A'))
+                    table.add_row(*row)
+                
+                console.print(table)
+            else:
+                # Default view
+                table = Table(title="HTB Labs/Servers")
+                table.add_column("ID", style="cyan")
+                table.add_column("Name", style="green")
+                table.add_column("Location", style="yellow")
+                table.add_column("Status", style="magenta")
+                
+                for lab in labs_data:
+                    table.add_row(
+                        str(lab.get('id', 'N/A') or 'N/A'),
+                        str(lab.get('name', 'N/A') or 'N/A'),
+                        str(lab.get('location', 'N/A') or 'N/A'),
+                        str(lab.get('status', 'N/A') or 'N/A')
+                    )
+                
+                console.print(table)
         else:
             console.print("[yellow]No labs found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @platform.command()
-def navigation():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def navigation(responses, option):
     """Get platform navigation details"""
     try:
         api_client = HTBAPIClient()
@@ -189,19 +299,46 @@ def navigation():
         
         if result and 'data' in result:
             nav_data = result['data']
-            console.print(Panel.fit(
-                f"[bold green]Platform Navigation[/bold green]\n"
-                f"Version: {nav_data.get('version', 'N/A') or 'N/A'}\n"
-                f"Status: {nav_data.get('status', 'N/A') or 'N/A'}",
-                title="Navigation Info"
-            ))
+            
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All Available Fields for Navigation[/bold green]\n"
+                    f"{chr(10).join([f'{k}: {v}' for k, v in nav_data.items()])}",
+                    title="Navigation - All Fields"
+                ))
+            elif option:
+                # Show only specified fields
+                selected_nav = {}
+                for field in option:
+                    if field in nav_data:
+                        selected_nav[field] = nav_data[field]
+                    else:
+                        console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
+                
+                if selected_nav:
+                    console.print(Panel.fit(
+                        f"[bold green]Selected Fields[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in selected_nav.items()])}",
+                        title="Navigation - Selected Fields"
+                    ))
+            else:
+                # Default view
+                console.print(Panel.fit(
+                    f"[bold green]Platform Navigation[/bold green]\n"
+                    f"Version: {nav_data.get('version', 'N/A') or 'N/A'}\n"
+                    f"Status: {nav_data.get('status', 'N/A') or 'N/A'}",
+                    title="Navigation Info"
+                ))
         else:
             console.print("[yellow]No navigation data found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @platform.command()
-def notices():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def notices(responses, option):
     """Get platform notices"""
     try:
         api_client = HTBAPIClient()
@@ -211,21 +348,46 @@ def notices():
         if result and 'data' in result:
             notices_data = result['data']
             
-            table = Table(title="Platform Notices")
-            table.add_column("ID", style="cyan")
-            table.add_column("Title", style="green")
-            table.add_column("Date", style="yellow")
-            table.add_column("Type", style="magenta")
-            
-            for notice in notices_data:
-                table.add_row(
-                    str(notice.get('id', 'N/A') or 'N/A'),
-                    str(notice.get('title', 'N/A') or 'N/A'),
-                    str(notice.get('date', 'N/A') or 'N/A'),
-                    str(notice.get('type', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+            if responses:
+                # Show all available fields for first notice
+                if notices_data:
+                    first_notice = notices_data[0]
+                    console.print(Panel.fit(
+                        f"[bold green]All Available Fields for Notices[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in first_notice.items()])}",
+                        title="Notices - All Fields (First Item)"
+                    ))
+            elif option:
+                # Show only specified fields
+                table = Table(title="Notices - Selected Fields")
+                table.add_column("ID", style="cyan")
+                for field in option:
+                    table.add_column(field.title(), style="green")
+                
+                for notice in notices_data:
+                    row = [str(notice.get('id', 'N/A') or 'N/A')]
+                    for field in option:
+                        row.append(str(notice.get(field, 'N/A') or 'N/A'))
+                    table.add_row(*row)
+                
+                console.print(table)
+            else:
+                # Default view
+                table = Table(title="Platform Notices")
+                table.add_column("ID", style="cyan")
+                table.add_column("Title", style="green")
+                table.add_column("Date", style="yellow")
+                table.add_column("Type", style="magenta")
+                
+                for notice in notices_data:
+                    table.add_row(
+                        str(notice.get('id', 'N/A') or 'N/A'),
+                        str(notice.get('title', 'N/A') or 'N/A'),
+                        str(notice.get('date', 'N/A') or 'N/A'),
+                        str(notice.get('type', 'N/A') or 'N/A')
+                    )
+                
+                console.print(table)
         else:
             console.print("[yellow]No notices found[/yellow]")
     except Exception as e:
@@ -354,7 +516,9 @@ def search(query, tags):
         console.print(f"[red]Error: {e}[/red]")
 
 @platform.command()
-def sidebar_announcement():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def sidebar_announcement(responses, option):
     """Get sidebar announcement"""
     try:
         api_client = HTBAPIClient()
@@ -363,20 +527,47 @@ def sidebar_announcement():
         
         if result and 'data' in result:
             announcement = result['data']
-            console.print(Panel.fit(
-                f"[bold green]Sidebar Announcement[/bold green]\n"
-                f"Title: {announcement.get('title', 'N/A') or 'N/A'}\n"
-                f"Message: {announcement.get('message', 'N/A') or 'N/A'}\n"
-                f"Date: {announcement.get('date', 'N/A') or 'N/A'}",
-                title="Sidebar Announcement"
-            ))
+            
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All Available Fields for Sidebar Announcement[/bold green]\n"
+                    f"{chr(10).join([f'{k}: {v}' for k, v in announcement.items()])}",
+                    title="Sidebar Announcement - All Fields"
+                ))
+            elif option:
+                # Show only specified fields
+                selected_announcement = {}
+                for field in option:
+                    if field in announcement:
+                        selected_announcement[field] = announcement[field]
+                    else:
+                        console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
+                
+                if selected_announcement:
+                    console.print(Panel.fit(
+                        f"[bold green]Selected Fields[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in selected_announcement.items()])}",
+                        title="Sidebar Announcement - Selected Fields"
+                    ))
+            else:
+                # Default view
+                console.print(Panel.fit(
+                    f"[bold green]Sidebar Announcement[/bold green]\n"
+                    f"Title: {announcement.get('title', 'N/A') or 'N/A'}\n"
+                    f"Message: {announcement.get('message', 'N/A') or 'N/A'}\n"
+                    f"Date: {announcement.get('date', 'N/A') or 'N/A'}",
+                    title="Sidebar Announcement"
+                ))
         else:
             console.print("[yellow]No sidebar announcement found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @platform.command()
-def sidebar_changelog():
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def sidebar_changelog(responses, option):
     """Get sidebar changelog"""
     try:
         api_client = HTBAPIClient()
@@ -385,13 +576,38 @@ def sidebar_changelog():
         
         if result and 'data' in result:
             changelog = result['data']
-            console.print(Panel.fit(
-                f"[bold green]Sidebar Changelog[/bold green]\n"
-                f"Title: {changelog.get('title', 'N/A') or 'N/A'}\n"
-                f"Content: {changelog.get('content', 'N/A') or 'N/A'}\n"
-                f"Date: {changelog.get('date', 'N/A') or 'N/A'}",
-                title="Sidebar Changelog"
-            ))
+            
+            if responses:
+                # Show all available fields
+                console.print(Panel.fit(
+                    f"[bold green]All Available Fields for Sidebar Changelog[/bold green]\n"
+                    f"{chr(10).join([f'{k}: {v}' for k, v in changelog.items()])}",
+                    title="Sidebar Changelog - All Fields"
+                ))
+            elif option:
+                # Show only specified fields
+                selected_changelog = {}
+                for field in option:
+                    if field in changelog:
+                        selected_changelog[field] = changelog[field]
+                    else:
+                        console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
+                
+                if selected_changelog:
+                    console.print(Panel.fit(
+                        f"[bold green]Selected Fields[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in selected_changelog.items()])}",
+                        title="Sidebar Changelog - Selected Fields"
+                    ))
+            else:
+                # Default view
+                console.print(Panel.fit(
+                    f"[bold green]Sidebar Changelog[/bold green]\n"
+                    f"Title: {changelog.get('title', 'N/A') or 'N/A'}\n"
+                    f"Content: {changelog.get('content', 'N/A') or 'N/A'}\n"
+                    f"Date: {changelog.get('date', 'N/A') or 'N/A'}",
+                    title="Sidebar Changelog"
+                ))
         else:
             console.print("[yellow]No sidebar changelog found[/yellow]")
     except Exception as e:

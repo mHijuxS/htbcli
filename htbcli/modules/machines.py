@@ -54,9 +54,11 @@ class MachinesModule:
         }
         return self.api.get("/machine/list/retired/paginated", params=params)
     
-    def submit_machine_flag(self, flag: str) -> Dict[str, Any]:
+    def submit_machine_flag(self, flag: str, machine_id: int) -> Dict[str, Any]:
         """Submit flag for machine"""
-        return self.api.post("/machine/own", json_data={"flag": flag})
+        # Use v5 API for flag submission with both flag and machine ID
+        v5_api_client = HTBAPIClient(version="v5")
+        return v5_api_client.post("/machine/own", json_data={"flag": flag, "id": machine_id})
     
     def get_machine_owns_top(self, machine_id: int) -> Dict[str, Any]:
         """Get top 25 owners for a machine"""
@@ -383,17 +385,18 @@ def profile(machine_slug, responses, option):
 
 @machines.command()
 @click.argument('flag')
-def submit(flag):
+@click.argument('machine_id', type=int)
+def submit(flag, machine_id):
     """Submit flag for machine"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
-        result = machines_module.submit_machine_flag(flag)
+        result = machines_module.submit_machine_flag(flag, machine_id)
         
         if result:
             console.print(Panel.fit(
                 f"[bold green]Flag Submission Result[/bold green]\n"
-                f"Status: {result.get('status', 'N/A') or 'N/A'}\n"
+                f"Machine ID: {machine_id}\n"
                 f"Message: {result.get('message', 'N/A') or 'N/A'}",
                 title="Flag Submission"
             ))
@@ -490,5 +493,473 @@ def unreleased():
             console.print(table)
         else:
             console.print("[yellow]No unreleased machines found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_id', type=int)
+@click.option('--period', default='1m', help='Time period for graph')
+def graph_activity(machine_id, period):
+    """Get machine graph activity"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_graph_activity(machine_id, period)
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Machine Graph Activity[/bold green]\n"
+                f"Machine ID: {machine_id}\n"
+                f"Period: {period}\n"
+                f"Data: {result}",
+                title="Machine Graph Activity"
+            ))
+        else:
+            console.print("[yellow]No graph activity data found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_id', type=int)
+def graph_matrix(machine_id):
+    """Get machine graph matrix"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_graph_matrix(machine_id)
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Machine Graph Matrix[/bold green]\n"
+                f"Machine ID: {machine_id}\n"
+                f"Data: {result}",
+                title="Machine Graph Matrix"
+            ))
+        else:
+            console.print("[yellow]No graph matrix data found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_id', type=int)
+def graph_difficulty(machine_id):
+    """Get machine graph difficulty"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_graph_owns_difficulty(machine_id)
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Machine Graph Difficulty[/bold green]\n"
+                f"Machine ID: {machine_id}\n"
+                f"Data: {result}",
+                title="Machine Graph Difficulty"
+            ))
+        else:
+            console.print("[yellow]No graph difficulty data found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.option('--page', default=1, help='Page number')
+@click.option('--per-page', default=20, help='Results per page')
+def retired_list(page, per_page):
+    """Get paginated list of retired machines"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_list_retired_paginated(page, per_page)
+        
+        if result and 'data' in result:
+            machines_data = result['data']['data'] if isinstance(result['data'], dict) and 'data' in result['data'] else result['data']
+            
+            table = Table(title=f"Retired Machines (Page {page})")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("OS", style="yellow")
+            table.add_column("Difficulty", style="magenta")
+            table.add_column("Points", style="blue")
+            
+            for machine in machines_data:
+                table.add_row(
+                    str(machine.get('id', 'N/A') or 'N/A'),
+                    str(machine.get('name', 'N/A') or 'N/A'),
+                    str(machine.get('os', 'N/A') or 'N/A'),
+                    str(machine.get('difficulty', 'N/A') or 'N/A'),
+                    str(machine.get('points', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No retired machines found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_id', type=int)
+def owns_top(machine_id):
+    """Get top 25 owners for a machine"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_owns_top(machine_id)
+        
+        if result and 'info' in result:
+            owners_data = result['info']
+            
+            table = Table(title=f"Top Owners for Machine (ID: {machine_id})")
+            table.add_column("Position", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("Rank", style="yellow")
+            table.add_column("User Own Time", style="magenta")
+            table.add_column("Root Own Time", style="blue")
+            
+            for owner in owners_data:
+                table.add_row(
+                    str(owner.get('position', 'N/A') or 'N/A'),
+                    str(owner.get('name', 'N/A') or 'N/A'),
+                    str(owner.get('rank_text', 'N/A') or 'N/A'),
+                    str(owner.get('user_own_time', 'N/A') or 'N/A'),
+                    str(owner.get('root_own_time', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No owners data found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+def recommended_retired():
+    """Get recommended retired machines"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_recommended_retired()
+        
+        if result:
+            # The response has card1 and card2 directly
+            recommended_data = [result.get('card1'), result.get('card2')] if result.get('card1') and result.get('card2') else []
+            
+            table = Table(title="Recommended Retired Machines")
+            table.add_column("Name", style="cyan")
+            table.add_column("OS", style="green")
+            table.add_column("Difficulty", style="yellow")
+            table.add_column("Release Date", style="magenta")
+            
+            for machine in recommended_data:
+                if machine:
+                    table.add_row(
+                        str(machine.get('name', 'N/A') or 'N/A'),
+                        str(machine.get('os', 'N/A') or 'N/A'),
+                        str(machine.get('difficultyText', 'N/A') or 'N/A'),
+                        str(machine.get('release', 'N/A') or 'N/A')
+                    )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No recommended retired machines found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_id', type=int)
+def reviews(machine_id):
+    """Get machine reviews"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_reviews(machine_id)
+        
+        if result and 'data' in result:
+            reviews_data = result['data']
+            
+            table = Table(title=f"Machine Reviews (ID: {machine_id})")
+            table.add_column("User", style="cyan")
+            table.add_column("Rating", style="green")
+            table.add_column("Comment", style="yellow")
+            table.add_column("Date", style="magenta")
+            
+            for review in reviews_data:
+                table.add_row(
+                    str(review.get('user', 'N/A') or 'N/A'),
+                    str(review.get('rating', 'N/A') or 'N/A'),
+                    str(review.get('comment', 'N/A') or 'N/A'),
+                    str(review.get('date', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No reviews found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_id', type=int)
+def reviews_user(machine_id):
+    """Get user's review for machine"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_reviews_user(machine_id)
+        
+        if result and 'data' in result:
+            review_data = result['data']
+            
+            console.print(Panel.fit(
+                f"[bold green]User Review for Machine[/bold green]\n"
+                f"Machine ID: {machine_id}\n"
+                f"Rating: {review_data.get('rating', 'N/A') or 'N/A'}\n"
+                f"Comment: {review_data.get('comment', 'N/A') or 'N/A'}\n"
+                f"Date: {review_data.get('date', 'N/A') or 'N/A'}",
+                title="User Review"
+            ))
+        else:
+            console.print("[yellow]No user review found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_id', type=int)
+def machine_tags(machine_id):
+    """Get machine tags"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_tags(machine_id)
+        
+        if result and 'data' in result:
+            tags_data = result['data']
+            
+            table = Table(title=f"Machine Tags (ID: {machine_id})")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("Type", style="yellow")
+            
+            for tag in tags_data:
+                table.add_row(
+                    str(tag.get('id', 'N/A') or 'N/A'),
+                    str(tag.get('name', 'N/A') or 'N/A'),
+                    str(tag.get('type', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No machine tags found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.option('--page', default=1, help='Page number')
+@click.option('--per-page', default=20, help='Results per page')
+def todo_list(page, per_page):
+    """Get machine todo list"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_todo_paginated(page, per_page)
+        
+        if result and 'data' in result:
+            todo_data = result['data']['data'] if isinstance(result['data'], dict) and 'data' in result['data'] else result['data']
+            
+            table = Table(title=f"Machine Todo List (Page {page})")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("OS", style="yellow")
+            table.add_column("Difficulty", style="magenta")
+            table.add_column("Points", style="blue")
+            
+            for machine in todo_data:
+                table.add_row(
+                    str(machine.get('id', 'N/A') or 'N/A'),
+                    str(machine.get('name', 'N/A') or 'N/A'),
+                    str(machine.get('os', 'N/A') or 'N/A'),
+                    str(machine.get('difficulty', 'N/A') or 'N/A'),
+                    str(machine.get('points', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No todo machines found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+def walkthrough_random():
+    """Get random walkthrough"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_walkthrough_random()
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Random Walkthrough[/bold green]\n"
+                f"Data: {result}",
+                title="Random Walkthrough"
+            ))
+        else:
+            console.print("[yellow]No random walkthrough found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+def walkthrough_languages():
+    """Get walkthrough language options"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_walkthroughs_language_list()
+        
+        if result and 'data' in result:
+            languages_data = result['data']
+            
+            table = Table(title="Walkthrough Languages")
+            table.add_column("Code", style="cyan")
+            table.add_column("Name", style="green")
+            
+            for language in languages_data:
+                table.add_row(
+                    str(language.get('code', 'N/A') or 'N/A'),
+                    str(language.get('name', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No languages found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+def walkthrough_feedback_choices():
+    """Get walkthrough feedback choices"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_walkthroughs_official_feedback_choices()
+        
+        if result and 'data' in result:
+            choices_data = result['data']
+            
+            table = Table(title="Walkthrough Feedback Choices")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            
+            for choice in choices_data:
+                table.add_row(
+                    str(choice.get('id', 'N/A') or 'N/A'),
+                    str(choice.get('name', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No feedback choices found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_id', type=int)
+def walkthroughs(machine_id):
+    """Get machine walkthroughs"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_walkthroughs(machine_id)
+        
+        if result and 'data' in result:
+            walkthroughs_data = result['data']
+            
+            table = Table(title=f"Machine Walkthroughs (ID: {machine_id})")
+            table.add_column("ID", style="cyan")
+            table.add_column("Title", style="green")
+            table.add_column("Language", style="yellow")
+            table.add_column("Author", style="magenta")
+            
+            for walkthrough in walkthroughs_data:
+                table.add_row(
+                    str(walkthrough.get('id', 'N/A') or 'N/A'),
+                    str(walkthrough.get('title', 'N/A') or 'N/A'),
+                    str(walkthrough.get('language', 'N/A') or 'N/A'),
+                    str(walkthrough.get('author', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No walkthroughs found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_id', type=int)
+def writeup(machine_id):
+    """Get machine writeup"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machine_writeup(machine_id)
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Machine Writeup[/bold green]\n"
+                f"Machine ID: {machine_id}\n"
+                f"Data: {result}",
+                title="Machine Writeup"
+            ))
+        else:
+            console.print("[yellow]No writeup found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_id', type=int)
+def adventure(machine_id):
+    """Get machine adventure"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machines_adventure(machine_id)
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Machine Adventure[/bold green]\n"
+                f"Machine ID: {machine_id}\n"
+                f"Data: {result}",
+                title="Machine Adventure"
+            ))
+        else:
+            console.print("[yellow]No adventure data found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_id', type=int)
+def tasks(machine_id):
+    """Get machine tasks"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        result = machines_module.get_machines_tasks(machine_id)
+        
+        if result and 'data' in result:
+            tasks_data = result['data']
+            
+            table = Table(title=f"Machine Tasks (ID: {machine_id})")
+            table.add_column("ID", style="cyan")
+            table.add_column("Title", style="green")
+            table.add_column("Description", style="yellow")
+            table.add_column("Points", style="magenta")
+            
+            for task in tasks_data:
+                table.add_row(
+                    str(task.get('id', 'N/A') or 'N/A'),
+                    str(task.get('title', 'N/A') or 'N/A'),
+                    str(task.get('description', 'N/A') or 'N/A'),
+                    str(task.get('points', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No tasks found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")

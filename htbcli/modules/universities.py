@@ -83,7 +83,9 @@ def universities():
 @universities.command()
 @click.option('--page', default=1, help='Page number')
 @click.option('--per-page', default=20, help='Results per page')
-def list(page, per_page):
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
+def list(page, per_page, responses, option):
     """List all universities"""
     try:
         api_client = HTBAPIClient()
@@ -93,30 +95,55 @@ def list(page, per_page):
         if result and 'data' in result:
             universities_data = result['data']['data'] if isinstance(result['data'], dict) and 'data' in result['data'] else result['data']
             
-            table = Table(title=f"Universities (Page {page})")
-            table.add_column("ID", style="cyan")
-            table.add_column("Name", style="green")
-            table.add_column("Country", style="yellow")
-            table.add_column("Users", style="magenta")
-            table.add_column("Respected", style="blue")
-            table.add_column("Created", style="red")
-            
-            try:
+            if responses:
+                # Show all available fields for first university
+                if universities_data:
+                    first_university = universities_data[0]
+                    console.print(Panel.fit(
+                        f"[bold green]All Available Fields for Universities[/bold green]\n"
+                        f"{chr(10).join([f'{k}: {v}' for k, v in first_university.items()])}",
+                        title=f"Universities - All Fields (First Item, Page {page})"
+                    ))
+            elif option:
+                # Show only specified fields
+                table = Table(title=f"Universities - Selected Fields (Page {page})")
+                table.add_column("ID", style="cyan")
+                for field in option:
+                    table.add_column(field.title(), style="green")
+                
                 for university in universities_data:
-                    table.add_row(
-                        str(university.get('id', 'N/A') or 'N/A'),
-                        str(university.get('name', 'N/A') or 'N/A'),
-                        str(university.get('country', 'N/A') or 'N/A'),
-                        str(university.get('users_count', 'N/A') or 'N/A'),
-                        str(university.get('respected_by_count', 'N/A') or 'N/A'),
-                        str(university.get('created_at', 'N/A') or 'N/A')[:10]  # Show just the date part
-                    )
+                    row = [str(university.get('id', 'N/A') or 'N/A')]
+                    for field in option:
+                        row.append(str(university.get(field, 'N/A') or 'N/A'))
+                    table.add_row(*row)
                 
                 console.print(table)
-            except Exception as e:
-                console.print(f"[yellow]Error processing universities data: {e}[/yellow]")
-                console.print(f"[yellow]Data type: {type(universities_data)}[/yellow]")
-                console.print(f"[yellow]Data: {universities_data}[/yellow]")
+            else:
+                # Default view
+                table = Table(title=f"Universities (Page {page})")
+                table.add_column("ID", style="cyan")
+                table.add_column("Name", style="green")
+                table.add_column("Country", style="yellow")
+                table.add_column("Users", style="magenta")
+                table.add_column("Respected", style="blue")
+                table.add_column("Created", style="red")
+                
+                try:
+                    for university in universities_data:
+                        table.add_row(
+                            str(university.get('id', 'N/A') or 'N/A'),
+                            str(university.get('name', 'N/A') or 'N/A'),
+                            str(university.get('country', 'N/A') or 'N/A'),
+                            str(university.get('users_count', 'N/A') or 'N/A'),
+                            str(university.get('respected_by_count', 'N/A') or 'N/A'),
+                            str(university.get('created_at', 'N/A') or 'N/A')[:10]  # Show just the date part
+                        )
+                    
+                    console.print(table)
+                except Exception as e:
+                    console.print(f"[yellow]Error processing universities data: {e}[/yellow]")
+                    console.print(f"[yellow]Data type: {type(universities_data)}[/yellow]")
+                    console.print(f"[yellow]Data: {universities_data}[/yellow]")
         else:
             console.print("[yellow]No universities found[/yellow]")
     except Exception as e:

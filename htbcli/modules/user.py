@@ -537,3 +537,399 @@ def disrespect(user_id):
             console.print("[yellow]No result from disrespect action[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
+
+@user.command()
+@click.argument('target_type')
+@click.argument('user_id', type=int)
+@click.argument('target_id', type=int)
+def achievement(target_type, user_id, target_id):
+    """Validate achievement/own"""
+    try:
+        api_client = HTBAPIClient()
+        user_module = UserModule(api_client)
+        result = user_module.get_user_achievement(target_type, user_id, target_id)
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Achievement Validation[/bold green]\n"
+                f"Target Type: {target_type}\n"
+                f"User ID: {user_id}\n"
+                f"Target ID: {target_id}\n"
+                f"Result: {result}",
+                title="Achievement Validation"
+            ))
+        else:
+            console.print("[yellow]No achievement data found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@user.command()
+def anonymized_id():
+    """Get user's anonymous ID"""
+    try:
+        api_client = HTBAPIClient()
+        user_module = UserModule(api_client)
+        result = user_module.get_user_anonymized_id()
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Anonymous ID[/bold green]\n"
+                f"Data: {result}",
+                title="Anonymous ID"
+            ))
+        else:
+            console.print("[yellow]No anonymous ID found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@user.command()
+def apptoken_list():
+    """Get user app tokens list"""
+    try:
+        api_client = HTBAPIClient()
+        user_module = UserModule(api_client)
+        result = user_module.get_user_apptoken_list()
+        
+        if result and 'data' in result:
+            tokens_data = result['data']
+            
+            table = Table(title="App Tokens")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("Created", style="yellow")
+            table.add_column("Last Used", style="magenta")
+            
+            for token in tokens_data:
+                table.add_row(
+                    str(token.get('id', 'N/A') or 'N/A'),
+                    str(token.get('name', 'N/A') or 'N/A'),
+                    str(token.get('created_at', 'N/A') or 'N/A'),
+                    str(token.get('last_used_at', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No app tokens found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@user.command()
+def banned():
+    """Check if user is banned"""
+    try:
+        api_client = HTBAPIClient()
+        user_module = UserModule(api_client)
+        result = user_module.get_user_banned()
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Ban Status[/bold green]\n"
+                f"Data: {result}",
+                title="Ban Status"
+            ))
+        else:
+            console.print("[yellow]No ban status found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@user.command()
+def connection_status():
+    """Get user connection status"""
+    try:
+        api_client = HTBAPIClient()
+        user_module = UserModule(api_client)
+        result = user_module.get_user_connection_status()
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Connection Status[/bold green]\n"
+                f"Data: {result}",
+                title="Connection Status"
+            ))
+        else:
+            console.print("[yellow]No connection status found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@user.command()
+def dashboard_tabloid():
+    """Get user dashboard tabloid"""
+    try:
+        api_client = HTBAPIClient()
+        user_module = UserModule(api_client)
+        result = user_module.get_user_dashboard_tabloid()
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Dashboard Tabloid[/bold green]\n"
+                f"Data: {result}",
+                title="Dashboard Tabloid"
+            ))
+        else:
+            console.print("[yellow]No dashboard tabloid found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@user.command()
+@click.argument('user_id', type=int)
+def chart_machines_attack(user_id):
+    """Get user profile machine attack chart"""
+    try:
+        api_client = HTBAPIClient()
+        user_module = UserModule(api_client)
+        result = user_module.get_user_profile_chart_machines_attack(user_id)
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Machine Attack Chart[/bold green]\n"
+                f"User ID: {user_id}\n"
+                f"Data: {result}",
+                title="Machine Attack Chart"
+            ))
+        else:
+            console.print("[yellow]No chart data found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@user.command()
+@click.argument('user_id', type=int)
+def content(user_id):
+    """Get user profile content"""
+    try:
+        api_client = HTBAPIClient()
+        user_module = UserModule(api_client)
+        result = user_module.get_user_profile_content(user_id)
+        
+        if result and 'profile' in result and 'content' in result['profile']:
+            content_data = result['profile']['content']
+            
+            # Display machines
+            if content_data.get('machines'):
+                table = Table(title=f"User Machines (ID: {user_id})")
+                table.add_column("ID", style="cyan")
+                table.add_column("Name", style="green")
+                table.add_column("OS", style="yellow")
+                table.add_column("Difficulty", style="magenta")
+                table.add_column("Rating", style="blue")
+                table.add_column("User Owns", style="red")
+                
+                for machine in content_data['machines']:
+                    table.add_row(
+                        str(machine.get('id', 'N/A') or 'N/A'),
+                        str(machine.get('name', 'N/A') or 'N/A'),
+                        str(machine.get('os', 'N/A') or 'N/A'),
+                        str(machine.get('difficulty', 'N/A') or 'N/A'),
+                        str(machine.get('rating', 'N/A') or 'N/A'),
+                        str(machine.get('user_owns', 'N/A') or 'N/A')
+                    )
+                
+                console.print(table)
+            
+            # Display challenges if any
+            if content_data.get('challenges'):
+                table = Table(title=f"User Challenges (ID: {user_id})")
+                table.add_column("Name", style="cyan")
+                table.add_column("Category", style="green")
+                table.add_column("Difficulty", style="yellow")
+                
+                for challenge in content_data['challenges']:
+                    table.add_row(
+                        str(challenge.get('name', 'N/A') or 'N/A'),
+                        str(challenge.get('category', 'N/A') or 'N/A'),
+                        str(challenge.get('difficulty', 'N/A') or 'N/A')
+                    )
+                
+                console.print(table)
+            
+            # Display writeups if any
+            if content_data.get('writeups'):
+                table = Table(title=f"User Writeups (ID: {user_id})")
+                table.add_column("Title", style="cyan")
+                table.add_column("Type", style="green")
+                table.add_column("Date", style="yellow")
+                
+                for writeup in content_data['writeups']:
+                    table.add_row(
+                        str(writeup.get('title', 'N/A') or 'N/A'),
+                        str(writeup.get('type', 'N/A') or 'N/A'),
+                        str(writeup.get('date', 'N/A') or 'N/A')
+                    )
+                
+                console.print(table)
+        else:
+            console.print("[yellow]No content found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@user.command()
+@click.argument('period')
+@click.argument('user_id', type=int)
+def graph(period, user_id):
+    """Get user profile graph"""
+    try:
+        api_client = HTBAPIClient()
+        user_module = UserModule(api_client)
+        result = user_module.get_user_profile_graph(period, user_id)
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]User Profile Graph[/bold green]\n"
+                f"Period: {period}\n"
+                f"User ID: {user_id}\n"
+                f"Data: {result}",
+                title="User Profile Graph"
+            ))
+        else:
+            console.print("[yellow]No graph data found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@user.command()
+@click.argument('user_id', type=int)
+def progress_challenges(user_id):
+    """Get user profile progress challenges"""
+    try:
+        api_client = HTBAPIClient()
+        user_module = UserModule(api_client)
+        result = user_module.get_user_profile_progress_challenges(user_id)
+        
+        if result and 'data' in result:
+            progress_data = result['data']
+            
+            table = Table(title=f"Challenge Progress (ID: {user_id})")
+            table.add_column("Category", style="cyan")
+            table.add_column("Progress", style="green")
+            table.add_column("Total", style="yellow")
+            
+            for category in progress_data:
+                table.add_row(
+                    str(category.get('category', 'N/A') or 'N/A'),
+                    str(category.get('progress', 'N/A') or 'N/A'),
+                    str(category.get('total', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No challenge progress found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@user.command()
+@click.argument('user_id', type=int)
+def progress_fortress(user_id):
+    """Get user profile progress fortress"""
+    try:
+        api_client = HTBAPIClient()
+        user_module = UserModule(api_client)
+        result = user_module.get_user_profile_progress_fortress(user_id)
+        
+        if result and 'data' in result:
+            progress_data = result['data']
+            
+            table = Table(title=f"Fortress Progress (ID: {user_id})")
+            table.add_column("Fortress", style="cyan")
+            table.add_column("Progress", style="green")
+            table.add_column("Total", style="yellow")
+            
+            for fortress in progress_data:
+                table.add_row(
+                    str(fortress.get('fortress', 'N/A') or 'N/A'),
+                    str(fortress.get('progress', 'N/A') or 'N/A'),
+                    str(fortress.get('total', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No fortress progress found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@user.command()
+@click.argument('user_id', type=int)
+def progress_machines_os(user_id):
+    """Get user profile progress machines OS"""
+    try:
+        api_client = HTBAPIClient()
+        user_module = UserModule(api_client)
+        result = user_module.get_user_profile_progress_machines_os(user_id)
+        
+        if result and 'data' in result:
+            progress_data = result['data']
+            
+            table = Table(title=f"Machines OS Progress (ID: {user_id})")
+            table.add_column("OS", style="cyan")
+            table.add_column("Progress", style="green")
+            table.add_column("Total", style="yellow")
+            
+            for os in progress_data:
+                table.add_row(
+                    str(os.get('os', 'N/A') or 'N/A'),
+                    str(os.get('progress', 'N/A') or 'N/A'),
+                    str(os.get('total', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No machines OS progress found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@user.command()
+@click.argument('user_id', type=int)
+def progress_prolab(user_id):
+    """Get user profile progress prolab"""
+    try:
+        api_client = HTBAPIClient()
+        user_module = UserModule(api_client)
+        result = user_module.get_user_profile_progress_prolab(user_id)
+        
+        if result and 'data' in result:
+            progress_data = result['data']
+            
+            table = Table(title=f"ProLab Progress (ID: {user_id})")
+            table.add_column("ProLab", style="cyan")
+            table.add_column("Progress", style="green")
+            table.add_column("Total", style="yellow")
+            
+            for prolab in progress_data:
+                table.add_row(
+                    str(prolab.get('prolab', 'N/A') or 'N/A'),
+                    str(prolab.get('progress', 'N/A') or 'N/A'),
+                    str(prolab.get('total', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No prolab progress found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@user.command()
+@click.argument('user_id', type=int)
+def progress_sherlocks(user_id):
+    """Get user profile progress sherlocks"""
+    try:
+        api_client = HTBAPIClient()
+        user_module = UserModule(api_client)
+        result = user_module.get_user_profile_progress_sherlocks(user_id)
+        
+        if result and 'data' in result:
+            progress_data = result['data']
+            
+            table = Table(title=f"Sherlocks Progress (ID: {user_id})")
+            table.add_column("Sherlock", style="cyan")
+            table.add_column("Progress", style="green")
+            table.add_column("Total", style="yellow")
+            
+            for sherlock in progress_data:
+                table.add_row(
+                    str(sherlock.get('sherlock', 'N/A') or 'N/A'),
+                    str(sherlock.get('progress', 'N/A') or 'N/A'),
+                    str(sherlock.get('total', 'N/A') or 'N/A')
+                )
+            
+            console.print(table)
+        else:
+            console.print("[yellow]No sherlocks progress found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
