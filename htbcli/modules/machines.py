@@ -139,12 +139,49 @@ class MachinesModule:
         return self.api.get(f"/machine/writeup/{machine_id}")
     
     def get_machines_adventure(self, machine_id: int) -> Dict[str, Any]:
-        """Get machine adventure"""
-        return self.api.get(f"/machines/{machine_id}/adventure")
+        """Get machines adventure"""
+        return self.api.get(f"/machines/adventure/{machine_id}")
     
     def get_machines_tasks(self, machine_id: int) -> Dict[str, Any]:
-        """Get machine tasks"""
-        return self.api.get(f"/machines/{machine_id}/tasks")
+        """Get machines tasks"""
+        return self.api.get(f"/machines/tasks/{machine_id}")
+    
+    def search_machine_by_name(self, machine_name: str, max_pages: int = 5) -> Optional[int]:
+        """Search for a machine by name and return its ID"""
+        try:
+            # Search through multiple pages to find the machine
+            for page in range(1, max_pages + 1):
+                result = self.get_machine_paginated(page=page, per_page=20, status='active')
+                
+                if not result or 'data' not in result:
+                    continue
+                
+                machines = result['data']
+                if not machines:
+                    continue
+                
+                # Search through machines on this page
+                for machine in machines:
+                    name = machine.get('name', '').lower()
+                    machine_id = machine.get('id')
+                    
+                    # Check for exact match first
+                    if name == machine_name.lower():
+                        return machine_id
+                    
+                    # Check for partial match (contains)
+                    if machine_name.lower() in name:
+                        return machine_id
+                
+                # If no more machines on this page, stop searching
+                if len(machines) < 20:
+                    break
+            
+            return None
+            
+        except Exception as e:
+            console.print(f"[red]Error searching for machine '{machine_name}': {e}[/red]")
+            return None
     
     def get_vm_status(self) -> Dict[str, Any]:
         """Get VM status with complete machine information including IP and profile data"""
