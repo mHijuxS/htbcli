@@ -116,75 +116,79 @@ class VPNModule:
             return False
     
     def switch_to_mode(self, mode: str) -> bool:
-        """Switch to a specific mode (labs, sp, fortresses, etc.)"""
+        """Switch to a specific mode and find the first available server"""
         try:
-            # Map mode to product and find appropriate server
+            # Map mode to product
             mode_map = {
                 'labs': 'labs',
                 'sp': 'starting_point',
                 'fortresses': 'fortresses',
-                'prolabs': 'prolabs',
+                'prolabs': 'pro_labs',
                 'endgames': 'endgames',
                 'competitive': 'competitive'
             }
             
-            product = mode_map.get(mode)
-            if not product:
-                console.print(f"[red]Invalid mode: {mode}[/red]")
-                return False
+            product = mode_map.get(mode, 'labs')
             
-            console.print(f"[blue]Switching to {mode} mode...[/blue]")
-            
-            # Get servers for this product
+            # Get VPN servers for this product
             servers = self.get_vpn_servers(product)
             
             if not servers or 'data' not in servers:
-                console.print(f"[red]Error: Could not get servers for {product}[/red]")
+                console.print(f"[red]Could not get VPN servers for {mode}[/red]")
                 return False
             
             data = servers['data']
             
             # Find the first available server
-            selected_server = None
             if 'options' in data:
                 for location, location_data in data['options'].items():
                     for server_type, type_data in location_data.items():
                         if 'servers' in type_data:
                             for server_id, server_info in type_data['servers'].items():
-                                if not server_info.get('full', False):  # Not full
-                                    selected_server = server_info
-                                    break
-                            if selected_server:
-                                break
-                    if selected_server:
-                        break
+                                if not server_info.get('full', False):
+                                    # Switch to this server
+                                    result = self.switch_vpn_server(int(server_id))
+                                    if result and result.get('status'):
+                                        console.print(f"[green]✓[/green] Switched to {server_info.get('friendly_name', 'unknown')} (ID: {server_id})")
+                                        return True
+                                    else:
+                                        console.print(f"[red]Failed to switch to server ID {server_id}[/red]")
+                                        return False
             
-            if not selected_server:
-                console.print(f"[red]Error: No available servers found for {mode}[/red]")
-                return False
-            
-            vpn_id = selected_server.get('id')
-            server_name = selected_server.get('friendly_name', 'unknown')
-            
-            if not vpn_id:
-                console.print(f"[red]Error: No VPN ID found for {server_name}[/red]")
-                return False
-            
-            console.print(f"[blue]Switching to server: {server_name} (ID: {vpn_id})[/blue]")
-            
-            # Switch to this server
-            result = self.switch_vpn_server(vpn_id)
-            
-            if result and result.get('status'):
-                console.print(f"[green]✓[/green] Successfully switched to {server_name}")
-                return True
-            else:
-                console.print(f"[red]✗[/red] Failed to switch to {server_name}")
-                return False
-                
-        except Exception as e:
-            console.print(f"[red]Error switching to {mode}: {e}[/red]")
+            console.print(f"[red]No available servers found for {mode}[/red]")
             return False
+            
+        except Exception as e:
+            console.print(f"[red]Error switching to mode {mode}: {e}[/red]")
+            return False
+
+    def find_server_id_by_name(self, server_name: str) -> int:
+        """Find server ID by friendly name across all products"""
+        try:
+            # Search in all products
+            products = ['labs', 'starting_point', 'fortresses', 'pro_labs', 'endgames', 'competitive']
+            
+            for product in products:
+                servers = self.get_vpn_servers(product)
+                
+                if not servers or 'data' not in servers:
+                    continue
+                
+                data = servers['data']
+                
+                if 'options' in data:
+                    for location, location_data in data['options'].items():
+                        for server_type, type_data in location_data.items():
+                            if 'servers' in type_data:
+                                for server_id, server_info in type_data['servers'].items():
+                                    if server_info.get('friendly_name', '').lower() == server_name.lower():
+                                        return int(server_id)
+            
+            return None
+            
+        except Exception as e:
+            console.print(f"[red]Error finding server ID for name {server_name}: {e}[/red]")
+            return None
     
     def list_vpn_servers(self) -> bool:
         """List VPN servers"""
@@ -289,46 +293,28 @@ class VPNModule:
             # Try different methods to start OpenVPN
             success = False
             
-            # Method 1: Try with pkexec (GUI password prompt)
+            # Method 1: Try with sudo (interactive)
             try:
-                console.print("[blue]Attempting to start VPN with pkexec...[/blue]")
+                console.print("[blue]Attempting to start VPN with sudo...[/blue]")
+                console.print("[yellow]You will be prompted for your password[/yellow]")
+                
                 process = subprocess.run([
-                    'pkexec', 'openvpn',
+                    'sudo', 'openvpn',
                     '--config', vpn_file,
                     '--daemon'
-                ], capture_output=True, text=True, timeout=10)
+                ], capture_output=True, text=True, timeout=30)
                 
                 if process.returncode == 0:
-                    console.print(f"[green]✓[/green] VPN connection started successfully with pkexec")
+                    console.print(f"[green]✓[/green] VPN connection started successfully with sudo")
                     success = True
                 else:
-                    console.print(f"[yellow]pkexec failed: {process.stderr}[/yellow]")
-            except (subprocess.TimeoutExpired, FileNotFoundError):
-                console.print("[yellow]pkexec not available or timed out[/yellow]")
+                    console.print(f"[red]sudo failed: {process.stderr}[/red]")
+            except subprocess.TimeoutExpired:
+                console.print("[red]sudo command timed out - password prompt may have failed[/red]")
+            except Exception as e:
+                console.print(f"[red]sudo error: {e}[/red]")
             
-            # Method 2: Try with sudo (interactive)
-            if not success:
-                try:
-                    console.print("[blue]Attempting to start VPN with sudo...[/blue]")
-                    console.print("[yellow]You may be prompted for your password[/yellow]")
-                    
-                    process = subprocess.run([
-                        'sudo', 'openvpn',
-                        '--config', vpn_file,
-                        '--daemon'
-                    ], capture_output=True, text=True, timeout=30)
-                    
-                    if process.returncode == 0:
-                        console.print(f"[green]✓[/green] VPN connection started successfully with sudo")
-                        success = True
-                    else:
-                        console.print(f"[red]sudo failed: {process.stderr}[/red]")
-                except subprocess.TimeoutExpired:
-                    console.print("[red]sudo command timed out - password prompt may have failed[/red]")
-                except Exception as e:
-                    console.print(f"[red]sudo error: {e}[/red]")
-            
-            # Method 3: Try without sudo (if user has permissions)
+            # Method 2: Try without sudo (if user has permissions)
             if not success:
                 try:
                     console.print("[blue]Attempting to start VPN without sudo...[/blue]")
@@ -352,7 +338,6 @@ class VPNModule:
                 console.print("1. Make sure OpenVPN is installed: sudo pacman -S openvpn")
                 console.print("2. Try running manually: sudo openvpn --config <vpn_file>")
                 console.print("3. Check if you have sudo privileges")
-                console.print("4. Try using pkexec instead of sudo")
                 return False
             
             return True
@@ -373,32 +358,22 @@ class VPNModule:
                 
                 success = False
                 
-                # Method 1: Try with pkexec
+                # Method 1: Try with sudo
                 try:
-                    console.print("[blue]Attempting to stop VPN with pkexec...[/blue]")
+                    console.print("[blue]Attempting to stop VPN with sudo...[/blue]")
+                    console.print("[yellow]You will be prompted for your password[/yellow]")
+                    
                     for pid in pids:
                         if pid:
-                            subprocess.run(['pkexec', 'kill', pid], capture_output=True, timeout=5)
-                    console.print("[green]✓[/green] VPN connection stopped with pkexec")
+                            subprocess.run(['sudo', 'kill', pid], capture_output=True, timeout=10)
+                    console.print("[green]✓[/green] VPN connection stopped with sudo")
                     success = True
-                except (subprocess.TimeoutExpired, FileNotFoundError):
-                    console.print("[yellow]pkexec not available or timed out[/yellow]")
+                except subprocess.TimeoutExpired:
+                    console.print("[red]sudo command timed out - password prompt may have failed[/red]")
+                except Exception as e:
+                    console.print(f"[red]sudo error: {e}[/red]")
                 
-                # Method 2: Try with sudo
-                if not success:
-                    try:
-                        console.print("[blue]Attempting to stop VPN with sudo...[/blue]")
-                        for pid in pids:
-                            if pid:
-                                subprocess.run(['sudo', 'kill', pid], capture_output=True, timeout=10)
-                        console.print("[green]✓[/green] VPN connection stopped with sudo")
-                        success = True
-                    except subprocess.TimeoutExpired:
-                        console.print("[red]sudo command timed out - password prompt may have failed[/red]")
-                    except Exception as e:
-                        console.print(f"[red]sudo error: {e}[/red]")
-                
-                # Method 3: Try without sudo (if user owns the process)
+                # Method 2: Try without sudo (if user owns the process)
                 if not success:
                     try:
                         console.print("[blue]Attempting to stop VPN without sudo...[/blue]")
@@ -506,8 +481,46 @@ def vpn(download, start, stop, list, files, switch, mode, name, server_id):
                 return
             
             if name:
-                # Start by name directly - find the exact VPN file
+                # Start by name - first find the server ID and switch to it
                 console.print(f"[blue]Starting VPN by name: {name}[/blue]")
+                
+                # Find server ID by name
+                server_id = vpn_module.find_server_id_by_name(name)
+                if not server_id:
+                    console.print(f"[red]Could not find server with name: {name}[/red]")
+                    console.print("[yellow]Use --list to see available server names[/yellow]")
+                    return
+                
+                console.print(f"[blue]Found server ID: {server_id} for name: {name}[/blue]")
+                
+                # Switch to this server
+                console.print(f"[blue]Switching to server: {name} (ID: {server_id})[/blue]")
+                result = vpn_module.switch_vpn_server(server_id)
+                if not result or not result.get('status'):
+                    console.print(f"[red]Failed to switch to server: {name}[/red]")
+                    return
+                
+                console.print(f"[green]✓[/green] Successfully switched to {name}")
+                
+                # Check if VPN files already exist for this server
+                vpn_files = vpn_module.list_vpn_files()
+                existing_files = []
+                
+                for vpn_file in vpn_files:
+                    if name in vpn_file['name']:
+                        existing_files.append(vpn_file['path'])
+                
+                # If files don't exist, download them
+                if not existing_files:
+                    console.print(f"[blue]VPN files not found for {name}, downloading...[/blue]")
+                    if not vpn_module.download_current_vpn():
+                        console.print(f"[red]Failed to download VPN for {name}[/red]")
+                        return
+                else:
+                    console.print(f"[blue]VPN files already exist for {name}[/blue]")
+                
+                # Start the VPN
+                console.print(f"[blue]Starting VPN for {name}...[/blue]")
                 
                 # Look for VPN files that match the name exactly
                 matching_files = []
@@ -516,11 +529,7 @@ def vpn(download, start, stop, list, files, switch, mode, name, server_id):
                         matching_files.append(str(file_path))
                 
                 if not matching_files:
-                    console.print(f"[red]No VPN files found matching name: {name}[/red]")
-                    console.print("[yellow]Available VPN files:[/yellow]")
-                    vpn_files = vpn_module.list_vpn_files()
-                    for vpn_file in vpn_files:
-                        console.print(f"  - {vpn_file['name']}")
+                    console.print(f"[red]No VPN files found for {name} after download[/red]")
                     return
                 
                 # Prefer UDP files over TCP
