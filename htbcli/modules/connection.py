@@ -127,21 +127,35 @@ def connections():
         if result and 'data' in result:
             connections_data = result['data']
             
-            table = Table(title="Recent Connections")
-            table.add_column("Server", style="cyan")
-            table.add_column("Location", style="green")
-            table.add_column("Date", style="yellow")
-            table.add_column("Status", style="magenta")
+            console.print("[bold blue]Current VPN Server Assignments[/bold blue]")
             
-            for connection in connections_data:
-                table.add_row(
-                    str(connection.get('server', 'N/A') or 'N/A'),
-                    str(connection.get('location', 'N/A') or 'N/A'),
-                    str(connection.get('date', 'N/A') or 'N/A'),
-                    str(connection.get('status', 'N/A') or 'N/A')
-                )
+            # Check each product type
+            products = {
+                'lab': 'Labs',
+                'starting_point': 'Starting Point',
+                'fortresses': 'Fortresses',
+                'pro_labs': 'ProLabs',
+                'competitive': 'Competitive'
+            }
             
-            console.print(table)
+            for product_key, product_name in products.items():
+                if product_key in connections_data and connections_data[product_key]:
+                    product_data = connections_data[product_key]
+                    
+                    if 'assigned_server' in product_data and product_data['assigned_server']:
+                        server = product_data['assigned_server']
+                        console.print(Panel.fit(
+                            f"[bold green]{product_name}[/bold green]\n"
+                            f"Server: {server.get('friendly_name', 'N/A')}\n"
+                            f"Location: {server.get('location', 'N/A')}\n"
+                            f"ID: {server.get('id', 'N/A')}\n"
+                            f"Can Access: {product_data.get('can_access', 'N/A')}",
+                            title=f"{product_name} Assignment"
+                        ))
+                    else:
+                        console.print(f"[yellow]No server assigned for {product_name}[/yellow]")
+                else:
+                    console.print(f"[yellow]No data for {product_name}[/yellow]")
         else:
             console.print("[yellow]No connections found[/yellow]")
     except Exception as e:
