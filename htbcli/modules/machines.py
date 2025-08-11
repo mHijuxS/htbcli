@@ -206,6 +206,22 @@ class MachinesModule:
             console.print(f"[red]Invalid machine identifier type: {type(machine_identifier)}[/red]")
             return None
     
+    def get_active_machine_id(self) -> Optional[int]:
+        """Get the ID of the currently active machine"""
+        try:
+            result = self.get_machine_active()
+            if result and result.get('info') and result['info'].get('id'):
+                machine_id = result['info']['id']
+                machine_name = result['info'].get('name', 'Unknown')
+                console.print(f"[blue]Using active machine: {machine_name} (ID: {machine_id})[/blue]")
+                return machine_id
+            else:
+                console.print("[red]No active machine found[/red]")
+                return None
+        except Exception as e:
+            console.print(f"[red]Error getting active machine: {e}[/red]")
+            return None
+    
     def get_vm_status(self) -> Dict[str, Any]:
         """Get VM status with complete machine information including IP and profile data"""
         # Get active machine data
@@ -623,19 +639,34 @@ def profile(machine_slug, responses, option):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-@click.argument('machine_identifier')
+@click.argument('machine_identifier', required=False)
 @click.argument('flag', required=False)
 def submit(machine_identifier, flag):
-    """Submit flag for machine. Flag can be provided as argument or piped from stdin."""
+    """Submit flag for machine. Uses active machine if no machine specified. Flag can be provided as argument or piped from stdin."""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
         
-        # Resolve machine identifier to machine ID
-        machine_id = machines_module.resolve_machine_id(machine_identifier)
-        if machine_id is None:
-            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
-            return
+        # Handle argument parsing - if only one argument is provided, it's the flag
+        if machine_identifier is not None and flag is None:
+            # Only one argument provided - treat it as the flag
+            flag = machine_identifier
+            machine_identifier = None
+        
+        # Determine machine ID
+        machine_id = None
+        if machine_identifier is None:
+            # Use active machine
+            machine_id = machines_module.get_active_machine_id()
+            if machine_id is None:
+                console.print("[red]No machine specified and no active machine found[/red]")
+                return
+        else:
+            # Resolve machine identifier to machine ID
+            machine_id = machines_module.resolve_machine_id(machine_identifier)
+            if machine_id is None:
+                console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+                return
         
         # Get flag from argument or stdin
         if flag is None:
@@ -646,7 +677,7 @@ def submit(machine_identifier, flag):
                     console.print("[red]No flag provided via stdin[/red]")
                     return
             else:
-                console.print("[red]No flag provided. Use: htbcli machines submit <machine> <flag> or pipe flag via stdin[/red]")
+                console.print("[red]No flag provided. Use: htbcli machines submit [machine] <flag> or pipe flag via stdin[/red]")
                 return
         
         result = machines_module.submit_machine_flag(flag, machine_id)

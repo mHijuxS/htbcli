@@ -98,7 +98,9 @@ htbcli info
 # Get machine profile by slug
 .venv/bin/htbcli machines profile machine-name
 
-# Submit flag for machine (using machine ID, name, or stdin)
+# Submit flag for machine (using active machine, machine ID, name, or stdin)
+echo "flag{your_flag_here}" | .venv/bin/htbcli machines submit
+.venv/bin/htbcli machines submit "flag{your_flag_here}"
 .venv/bin/htbcli machines submit 12345 "flag{your_flag_here}"
 .venv/bin/htbcli machines submit "machine-name" "flag{your_flag_here}"
 echo "flag{your_flag_here}" | .venv/bin/htbcli machines submit "machine-name"
@@ -204,17 +206,21 @@ The CLI is organized into the following modules based on the HTB API:
 
 ### Submit a Flag
 ```bash
+# Submit flag to active machine (most convenient)
+echo "flag{abc123def456}" | .venv/bin/htbcli machines submit
+.venv/bin/htbcli machines submit "flag{abc123def456}"
+
 # Submit flag using machine ID
 .venv/bin/htbcli machines submit 12345 "flag{abc123def456}"
 
 # Submit flag using machine name
 .venv/bin/htbcli machines submit "machine-name" "flag{abc123def456}"
 
-# Submit flag piped from stdin
+# Submit flag piped from stdin to specific machine
 echo "flag{abc123def456}" | .venv/bin/htbcli machines submit "machine-name"
 
-# Submit flag from environment variable
-echo $FLAG | .venv/bin/htbcli machines submit "machine-name"
+# Submit flag from environment variable to active machine
+echo $FLAG | .venv/bin/htbcli machines submit
 ```
 
 ### Get User Profile
