@@ -3,7 +3,8 @@ Machines module for HTB CLI
 """
 
 import click
-from typing import Dict, Any, Optional
+import sys
+from typing import Dict, Any, Optional, Union
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -181,6 +182,28 @@ class MachinesModule:
             
         except Exception as e:
             console.print(f"[red]Error searching for machine '{machine_name}': {e}[/red]")
+            return None
+    
+    def resolve_machine_id(self, machine_identifier: Union[int, str]) -> Optional[int]:
+        """Resolve machine identifier to machine ID"""
+        if isinstance(machine_identifier, int):
+            return machine_identifier
+        elif isinstance(machine_identifier, str):
+            # Try to convert to int first (in case it's a string number)
+            try:
+                return int(machine_identifier)
+            except ValueError:
+                # Search for machine by name
+                console.print(f"[blue]Searching for machine: {machine_identifier}[/blue]")
+                machine_id = self.search_machine_by_name(machine_identifier)
+                if machine_id:
+                    console.print(f"[green]✓[/green] Found machine ID: {machine_id} for '{machine_identifier}'")
+                    return machine_id
+                else:
+                    console.print(f"[red]Could not find machine with name: {machine_identifier}[/red]")
+                    return None
+        else:
+            console.print(f"[red]Invalid machine identifier type: {type(machine_identifier)}[/red]")
             return None
     
     def get_vm_status(self) -> Dict[str, Any]:
@@ -600,13 +623,32 @@ def profile(machine_slug, responses, option):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-@click.argument('flag')
-@click.argument('machine_id', type=int)
-def submit(flag, machine_id):
-    """Submit flag for machine"""
+@click.argument('machine_identifier')
+@click.argument('flag', required=False)
+def submit(machine_identifier, flag):
+    """Submit flag for machine. Flag can be provided as argument or piped from stdin."""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
+        
+        # Resolve machine identifier to machine ID
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+        
+        # Get flag from argument or stdin
+        if flag is None:
+            # Read from stdin
+            if not sys.stdin.isatty():
+                flag = sys.stdin.read().strip()
+                if not flag:
+                    console.print("[red]No flag provided via stdin[/red]")
+                    return
+            else:
+                console.print("[red]No flag provided. Use: htbcli machines submit <machine> <flag> or pipe flag via stdin[/red]")
+                return
+        
         result = machines_module.submit_machine_flag(flag, machine_id)
         
         if result:
