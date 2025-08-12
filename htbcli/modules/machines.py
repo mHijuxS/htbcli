@@ -10,6 +10,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from .vpn import VPNModule
 
 console = Console()
 
@@ -18,6 +19,7 @@ class MachinesModule:
     
     def __init__(self, api_client: HTBAPIClient):
         self.api = api_client
+        self.vpn_module = VPNModule(api_client)
     
     def get_machine_active(self) -> Dict[str, Any]:
         """Get active machine details"""
@@ -297,7 +299,11 @@ def active(responses, option):
                 selected_info = {}
                 for field in option:
                     if field in info:
-                        selected_info[field] = info[field]
+                        value = info[field]
+                        # Special handling for VPN server ID to show name
+                        if field == 'vpn_server_id':
+                            value = machines_module.vpn_module.resolve_vpn_server_name(value)
+                        selected_info[field] = value
                     else:
                         console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
                 
@@ -316,7 +322,7 @@ def active(responses, option):
                     f"Type: {info.get('type', 'N/A')}\n"
                     f"IP Address: {info.get('ip', 'N/A')}\n"
                     f"Lab Server: {info.get('lab_server', 'N/A')}\n"
-                    f"VPN Server ID: {info.get('vpn_server_id', 'N/A')}\n"
+                    f"VPN Server: {machines_module.vpn_module.resolve_vpn_server_name(info.get('vpn_server_id'))}\n"
                     f"Expires At: {info.get('expires_at', 'N/A')}\n"
                     f"Is Spawning: {info.get('isSpawning', 'N/A')}\n"
                     f"Tier ID: {info.get('tier_id', 'N/A')}\n"
@@ -330,63 +336,7 @@ def active(responses, option):
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
-@machines.command()
-@click.option('--responses', is_flag=True, help='Show all available response fields')
-@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def vm_status(responses, option):
-    """Get VM status (alias for active command)"""
-    try:
-        api_client = HTBAPIClient()
-        machines_module = MachinesModule(api_client)
-        result = machines_module.get_vm_status()
-        
-        if result and result.get('info'):
-            info = result['info']
-            
-            if responses:
-                # Show all available fields
-                console.print(Panel.fit(
-                    f"[bold green]All Available Fields for VM Status[/bold green]\n"
-                    f"{chr(10).join([f'{k}: {v}' for k, v in info.items()])}",
-                    title="VM Status - All Fields"
-                ))
-            elif option:
-                # Show only specified fields
-                selected_info = {}
-                for field in option:
-                    if field in info:
-                        selected_info[field] = info[field]
-                    else:
-                        console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
-                
-                if selected_info:
-                    console.print(Panel.fit(
-                        f"[bold green]Selected Fields[/bold green]\n"
-                        f"{chr(10).join([f'{k}: {v}' for k, v in selected_info.items()])}",
-                        title="VM Status - Selected Fields"
-                    ))
-            else:
-                # Default view
-                console.print(Panel.fit(
-                    f"[bold green]VM Status[/bold green]\n"
-                    f"Machine ID: {info.get('id', 'N/A')}\n"
-                    f"Name: {info.get('name', 'N/A')}\n"
-                    f"Type: {info.get('type', 'N/A')}\n"
-                    f"IP Address: {info.get('ip', 'N/A')}\n"
-                    f"Lab Server: {info.get('lab_server', 'N/A')}\n"
-                    f"VPN Server ID: {info.get('vpn_server_id', 'N/A')}\n"
-                    f"Expires At: {info.get('expires_at', 'N/A')}\n"
-                    f"Is Spawning: {info.get('isSpawning', 'N/A')}\n"
-                    f"Tier ID: {info.get('tier_id', 'N/A')}\n"
-                    f"Voted: {info.get('voted', 'N/A')}\n"
-                    f"Voting: {info.get('voting', 'N/A')}\n"
-                    f"Info Status: {info.get('info_status', 'N/A')}",
-                    title="VM Status"
-                ))
-        else:
-            console.print("[yellow]No VM status found[/yellow]")
-    except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
+
 
 @machines.command()
 @click.argument('machine_id', type=int)

@@ -6,7 +6,7 @@ import os
 import subprocess
 import click
 import glob
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -189,6 +189,65 @@ class VPNModule:
         except Exception as e:
             console.print(f"[red]Error finding server ID for name {server_name}: {e}[/red]")
             return None
+    
+    def find_server_name_by_id(self, server_id: int) -> Optional[str]:
+        """Find server name by ID across all products"""
+        try:
+            # Search in all products
+            products = ['labs', 'starting_point', 'fortresses', 'pro_labs', 'endgames', 'competitive']
+            
+            for product in products:
+                servers = self.get_vpn_servers(product)
+                
+                if not servers or 'data' not in servers:
+                    continue
+                
+                data = servers['data']
+                
+                if 'options' in data:
+                    for location, location_data in data['options'].items():
+                        for server_type, type_data in location_data.items():
+                            if 'servers' in type_data:
+                                for sid, server_info in type_data['servers'].items():
+                                    if int(sid) == server_id:
+                                        friendly_name = server_info.get('friendly_name', '')
+                                        location = server_info.get('location', '')
+                                        if friendly_name and location:
+                                            return f"{friendly_name} ({location})"
+                                        elif friendly_name:
+                                            return friendly_name
+                                        else:
+                                            return f"Server {server_id}"
+            
+            return None
+            
+        except Exception as e:
+            console.print(f"[red]Error finding server name for ID {server_id}: {e}[/red]")
+            return None
+    
+    def resolve_vpn_server_name(self, vpn_server_id: Union[int, str]) -> str:
+        """Resolve VPN server ID to a user-friendly name"""
+        if vpn_server_id is None or vpn_server_id == 'N/A':
+            return 'N/A'
+        
+        try:
+            # Convert to int if it's a string number
+            if isinstance(vpn_server_id, str):
+                try:
+                    vpn_server_id = int(vpn_server_id)
+                except ValueError:
+                    return str(vpn_server_id)
+            
+            # Find the server name by ID
+            server_name = self.find_server_name_by_id(vpn_server_id)
+            if server_name:
+                return server_name
+            else:
+                return f"Server {vpn_server_id}"
+                
+        except Exception as e:
+            console.print(f"[red]Error resolving VPN server name for ID {vpn_server_id}: {e}[/red]")
+            return f"Server {vpn_server_id}"
     
     def list_vpn_servers(self) -> bool:
         """List VPN servers"""
