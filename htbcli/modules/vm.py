@@ -3,10 +3,12 @@ VM module for HTB CLI
 """
 
 import click
+import time
 from typing import Dict, Any, Optional, Union
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from ..api_client import HTBAPIClient
 from .machines import MachinesModule
@@ -48,6 +50,73 @@ class VMModule:
         if machine_id is None:
             return {"error": "Could not resolve machine identifier"}
         return self.api.post("/vm/spawn", json_data={"machine_id": machine_id})
+    
+    def wait_for_vm_ready(self, machine_identifier: Union[int, str], max_wait_time: int = 300) -> Dict[str, Any]:
+        """Wait for VM to be ready by polling status every 5 seconds"""
+        machine_id = self.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            return {"error": "Could not resolve machine identifier"}
+        
+        console.print(f"[blue]Waiting for VM to be ready... (max wait time: {max_wait_time}s)[/blue]")
+        
+        start_time = time.time()
+        attempts = 0
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Checking VM status...", total=None)
+            
+            while time.time() - start_time < max_wait_time:
+                attempts += 1
+                progress.update(task, description=f"Checking VM status... (attempt {attempts})")
+                
+                try:
+                    # Get VM status
+                    vm_status = self.machines_module.get_vm_status()
+                    
+                    if vm_status and vm_status.get('info'):
+                        info = vm_status['info']
+                        is_spawning = info.get('isSpawning', True)
+                        ip_address = info.get('ip')
+                        
+                        # Check if VM is ready (not spawning and has IP)
+                        if not is_spawning and ip_address:
+                            progress.update(task, description="VM is ready!")
+                            console.print(f"\n[bold green]✓ VM is ready![/bold green]")
+                            console.print(f"[green]IP Address: {ip_address}[/green]")
+                            console.print(f"[green]Machine: {info.get('name', 'N/A')}[/green]")
+                            console.print(f"[green]Expires at: {info.get('expires_at', 'N/A')}[/green]")
+                            return {
+                                "success": True,
+                                "ip": ip_address,
+                                "machine_name": info.get('name'),
+                                "expires_at": info.get('expires_at'),
+                                "wait_time": time.time() - start_time,
+                                "attempts": attempts
+                            }
+                        elif is_spawning:
+                            progress.update(task, description=f"VM is spawning... (attempt {attempts})")
+                        elif not ip_address:
+                            progress.update(task, description=f"Waiting for IP address... (attempt {attempts})")
+                    else:
+                        progress.update(task, description=f"No VM status found... (attempt {attempts})")
+                
+                except Exception as e:
+                    progress.update(task, description=f"Error checking status: {str(e)}... (attempt {attempts})")
+                
+                # Wait 5 seconds before next check
+                time.sleep(5)
+        
+        # If we get here, we've timed out
+        console.print(f"\n[red]Timeout: VM did not become ready within {max_wait_time} seconds[/red]")
+        return {
+            "error": f"Timeout: VM did not become ready within {max_wait_time} seconds",
+            "wait_time": max_wait_time,
+            "attempts": attempts
+        }
     
     def extend_vm(self, machine_identifier: Union[int, str]) -> Dict[str, Any]:
         """Extend the virtual machine"""
@@ -92,11 +161,15 @@ def vm():
 
 @vm.command()
 @click.argument('machine_identifier')
-def spawn(machine_identifier):
+@click.option('--wait', is_flag=True, help='Wait for VM to be ready (poll every 5 seconds until isSpawning=False and IP is available)')
+@click.option('--max-wait', default=300, help='Maximum wait time in seconds (default: 300)')
+def spawn(machine_identifier, wait, max_wait):
     """Spawn a virtual machine (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         vm_module = VMModule(api_client)
+        
+        # First spawn the VM
         result = vm_module.spawn_vm(machine_identifier)
         
         if result and 'error' in result:
@@ -111,6 +184,53 @@ def spawn(machine_identifier):
             ))
         else:
             console.print("[yellow]No response from VM spawn[/yellow]")
+        
+        # If --wait flag is provided, wait for VM to be ready
+        if wait:
+            console.print("\n[blue]Waiting for VM to be ready...[/blue]")
+            wait_result = vm_module.wait_for_vm_ready(machine_identifier, max_wait)
+            
+            if wait_result.get('success'):
+                console.print(Panel.fit(
+                    f"[bold green]VM Ready![/bold green]\n"
+                    f"IP Address: {wait_result['ip']}\n"
+                    f"Machine: {wait_result['machine_name']}\n"
+                    f"Expires at: {wait_result['expires_at']}\n"
+                    f"Wait time: {wait_result['wait_time']:.1f}s\n"
+                    f"Attempts: {wait_result['attempts']}",
+                    title="VM Ready"
+                ))
+            else:
+                console.print(f"[red]Error waiting for VM: {wait_result.get('error', 'Unknown error')}[/red]")
+                
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@vm.command()
+@click.argument('machine_identifier')
+@click.option('--max-wait', default=300, help='Maximum wait time in seconds (default: 300)')
+def wait(machine_identifier, max_wait):
+    """Wait for VM to be ready (poll every 5 seconds until isSpawning=False and IP is available)"""
+    try:
+        api_client = HTBAPIClient()
+        vm_module = VMModule(api_client)
+        
+        console.print(f"[blue]Waiting for VM to be ready...[/blue]")
+        wait_result = vm_module.wait_for_vm_ready(machine_identifier, max_wait)
+        
+        if wait_result.get('success'):
+            console.print(Panel.fit(
+                f"[bold green]VM Ready![/bold green]\n"
+                f"IP Address: {wait_result['ip']}\n"
+                f"Machine: {wait_result['machine_name']}\n"
+                f"Expires at: {wait_result['expires_at']}\n"
+                f"Wait time: {wait_result['wait_time']:.1f}s\n"
+                f"Attempts: {wait_result['attempts']}",
+                title="VM Ready"
+            ))
+        else:
+            console.print(f"[red]Error waiting for VM: {wait_result.get('error', 'Unknown error')}[/red]")
+            
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 

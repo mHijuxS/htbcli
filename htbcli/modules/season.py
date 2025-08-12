@@ -339,7 +339,7 @@ def machines(responses, option, count_only):
 @click.argument('season_id', type=int)
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def machines_completed(season_id, responses, option):
+def completed(season_id, responses, option):
     """Get completed machines for a specific season"""
     try:
         api_client = HTBAPIClient()
@@ -397,13 +397,24 @@ def machines_completed(season_id, responses, option):
                 # Show default fields
                 if 'data' in result:
                     completed_data = result['data']
-                    count = len(completed_data) if isinstance(completed_data, list) else 'N/A'
-                    console.print(Panel.fit(
-                        f"[bold green]Completed Machines[/bold green]\n"
-                        f"Season ID: {season_id}\n"
-                        f"Count: {count}",
-                        title=f"Season {season_id} Completed Machines"
-                    ))
+                    if isinstance(completed_data, dict):
+                        season_flags = completed_data.get('season_flags', 'N/A')
+                        season_pwned_flags = completed_data.get('season_pwned_flags', 'N/A')
+                        console.print(Panel.fit(
+                            f"[bold green]Completed Machines[/bold green]\n"
+                            f"Season ID: {season_id}\n"
+                            f"Total Flags: {season_flags}\n"
+                            f"Completed Flags: {season_pwned_flags}",
+                            title=f"Season {season_id} Completed Machines"
+                        ))
+                    else:
+                        count = len(completed_data) if isinstance(completed_data, list) else 'N/A'
+                        console.print(Panel.fit(
+                            f"[bold green]Completed Machines[/bold green]\n"
+                            f"Season ID: {season_id}\n"
+                            f"Count: {count}",
+                            title=f"Season {season_id} Completed Machines"
+                        ))
                 else:
                     console.print(Panel.fit(
                         f"[bold green]Completed Machines[/bold green]\n"
