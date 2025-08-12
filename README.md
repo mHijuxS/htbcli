@@ -158,13 +158,40 @@ echo "flag{your_flag_here}" | .venv/bin/htbcli machines submit "machine-name"
 
 ```bash
 # List sherlocks
-.venv/bin/htbcli sherlocks list --page 1 --per-page 20
+.venv/bin/htbcli sherlocks list-sherlocks --page 1 --per-page 20
 
-# Get sherlock profile
-.venv/bin/htbcli sherlocks profile sherlock-name
+# Get sherlock categories
+.venv/bin/htbcli sherlocks categories
 
-# Submit sherlock flag
-.venv/bin/htbcli sherlocks submit "flag{your_flag_here}"
+# Get sherlock info by ID
+.venv/bin/htbcli sherlocks info 123
+
+# Download sherlock file (default behavior)
+.venv/bin/htbcli sherlocks download 123
+
+# Show download link only
+.venv/bin/htbcli sherlocks download 123 --link-only
+
+# Download sherlock file with custom filename
+.venv/bin/htbcli sherlocks download 123 --output my_sherlock.zip
+
+# Start playing a sherlock
+.venv/bin/htbcli sherlocks play 123
+
+# Get sherlock progress
+.venv/bin/htbcli sherlocks progress 123
+
+# Get sherlock tasks
+.venv/bin/htbcli sherlocks tasks 123
+
+# Submit flag for a specific sherlock task
+.venv/bin/htbcli sherlocks submit-flag 123 456 "flag{your_flag_here}"
+
+# Get sherlock writeup
+.venv/bin/htbcli sherlocks writeup 123
+
+# Get official sherlock writeup
+.venv/bin/htbcli sherlocks writeup-official 123
 ```
 
 ## Available Modules
@@ -175,7 +202,7 @@ The CLI is organized into the following modules based on the HTB API:
 - **Challenges**: Challenge-related endpoints (list, profile, submit flags)
 - **User**: User profile and statistics endpoints
 - **Season**: Season/Arena-related endpoints
-- **Sherlocks**: Sherlock-related endpoints
+- **Sherlocks**: Sherlock-related endpoints (list, categories, info, download, play, progress, tasks, submit flags, writeups)
 - **Badges**: Badge-related endpoints
 - **Career**: Career-related endpoints (companies, jobs, applications)
 - **Connection**: VPN connection endpoints (servers, status, connect/disconnect)
