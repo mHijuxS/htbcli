@@ -410,11 +410,18 @@ def tasks(sherlock_identifier):
             table.add_column("Completed", style="blue")
             
             for task in tasks_data:
+                # Extract type text from the type object
+                task_type = task.get('type', {})
+                if isinstance(task_type, dict):
+                    type_text = task_type.get('text', 'N/A')
+                else:
+                    type_text = str(task_type) if task_type else 'N/A'
+                
                 table.add_row(
                     str(task.get('id', 'N/A') or 'N/A'),
                     str(task.get('title', 'N/A') or 'N/A'),
                     str(task.get('description', 'N/A') or 'N/A'),
-                    str(task.get('type', 'N/A') or 'N/A'),
+                    str(type_text),
                     str(task.get('completed', 'N/A') or 'N/A')
                 )
             
