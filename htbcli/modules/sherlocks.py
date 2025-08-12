@@ -3,7 +3,7 @@ Sherlocks module for HTB CLI
 """
 
 import click
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -65,6 +65,65 @@ class SherlocksModule:
     def get_sherlock_writeup_official(self, sherlock_id: int) -> Dict[str, Any]:
         """Get official sherlock writeup"""
         return self.api.get(f"/sherlocks/{sherlock_id}/writeup/official")
+    
+    def search_sherlock_by_name(self, sherlock_name: str, max_pages: int = 5) -> Optional[int]:
+        """Search for a sherlock by name and return its ID"""
+        try:
+            # Search through multiple pages to find the sherlock
+            for page in range(1, max_pages + 1):
+                result = self.get_sherlocks_list(page=page, per_page=20)
+                
+                if not result or 'data' not in result:
+                    continue
+                
+                sherlocks = result['data']
+                if not sherlocks:
+                    continue
+                
+                # Search through sherlocks on this page
+                for sherlock in sherlocks:
+                    name = sherlock.get('name', '').lower()
+                    sherlock_id = sherlock.get('id')
+                    
+                    # Check for exact match first
+                    if name == sherlock_name.lower():
+                        return sherlock_id
+                    
+                    # Check for partial match (contains)
+                    if sherlock_name.lower() in name:
+                        return sherlock_id
+                
+                # If no more sherlocks on this page, stop searching
+                if len(sherlocks) < 20:
+                    break
+            
+            return None
+            
+        except Exception as e:
+            console.print(f"[red]Error searching for sherlock '{sherlock_name}': {e}[/red]")
+            return None
+    
+    def resolve_sherlock_id(self, sherlock_identifier: Union[int, str]) -> Optional[int]:
+        """Resolve sherlock identifier to sherlock ID"""
+        if isinstance(sherlock_identifier, int):
+            return sherlock_identifier
+        elif isinstance(sherlock_identifier, str):
+            # Try to convert to int first (in case it's a string number)
+            try:
+                return int(sherlock_identifier)
+            except ValueError:
+                # Search for sherlock by name
+                console.print(f"[blue]Searching for sherlock: {sherlock_identifier}[/blue]")
+                sherlock_id = self.search_sherlock_by_name(sherlock_identifier)
+                if sherlock_id:
+                    console.print(f"[green]✓[/green] Found sherlock ID: {sherlock_id} for '{sherlock_identifier}'")
+                    return sherlock_id
+                else:
+                    console.print(f"[red]Could not find sherlock with name: {sherlock_identifier}[/red]")
+                    return None
+        else:
+            console.print(f"[red]Invalid sherlock identifier type: {type(sherlock_identifier)}[/red]")
+            return None
 
 # Click commands
 @click.group()
@@ -144,14 +203,21 @@ def categories():
         console.print(f"[red]Error: {e}[/red]")
 
 @sherlocks.command()
-@click.argument('sherlock_id', type=int)
+@click.argument('sherlock_identifier')
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def info(sherlock_id, responses, option):
-    """Get sherlock info by ID"""
+def info(sherlock_identifier, responses, option):
+    """Get sherlock info by ID or name"""
     try:
         api_client = HTBAPIClient()
         sherlocks_module = SherlocksModule(api_client)
+        
+        # Resolve sherlock identifier to sherlock ID
+        sherlock_id = sherlocks_module.resolve_sherlock_id(sherlock_identifier)
+        if sherlock_id is None:
+            console.print(f"[red]Could not resolve sherlock identifier: {sherlock_identifier}[/red]")
+            return
+        
         result = sherlocks_module.get_sherlock_info(sherlock_id)
         
         if result and 'data' in result:
@@ -180,14 +246,21 @@ def info(sherlock_id, responses, option):
         console.print(f"[red]Error: {e}[/red]")
 
 @sherlocks.command()
-@click.argument('sherlock_id', type=int)
+@click.argument('sherlock_identifier')
 @click.option('--link-only', '-l', is_flag=True, help='Show only the download link without downloading')
 @click.option('--output', '-o', help='Output filename (default: sherlock_{id}.zip)')
-def download(sherlock_id, link_only, output):
+def download(sherlock_identifier, link_only, output):
     """Download sherlock file or show download link"""
     try:
         api_client = HTBAPIClient()
         sherlocks_module = SherlocksModule(api_client)
+        
+        # Resolve sherlock identifier to sherlock ID
+        sherlock_id = sherlocks_module.resolve_sherlock_id(sherlock_identifier)
+        if sherlock_id is None:
+            console.print(f"[red]Could not resolve sherlock identifier: {sherlock_identifier}[/red]")
+            return
+        
         result = sherlocks_module.get_sherlock_download_link(sherlock_id)
         
         if result and 'url' in result:
@@ -252,12 +325,19 @@ def download(sherlock_id, link_only, output):
         console.print(f"[red]Error: {e}[/red]")
 
 @sherlocks.command()
-@click.argument('sherlock_id', type=int)
-def play(sherlock_id):
+@click.argument('sherlock_identifier')
+def play(sherlock_identifier):
     """Start or continue playing a sherlock"""
     try:
         api_client = HTBAPIClient()
         sherlocks_module = SherlocksModule(api_client)
+        
+        # Resolve sherlock identifier to sherlock ID
+        sherlock_id = sherlocks_module.resolve_sherlock_id(sherlock_identifier)
+        if sherlock_id is None:
+            console.print(f"[red]Could not resolve sherlock identifier: {sherlock_identifier}[/red]")
+            return
+        
         result = sherlocks_module.get_sherlock_play(sherlock_id)
         
         if result:
@@ -272,12 +352,19 @@ def play(sherlock_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @sherlocks.command()
-@click.argument('sherlock_id', type=int)
-def progress(sherlock_id):
+@click.argument('sherlock_identifier')
+def progress(sherlock_identifier):
     """Get sherlock progress"""
     try:
         api_client = HTBAPIClient()
         sherlocks_module = SherlocksModule(api_client)
+        
+        # Resolve sherlock identifier to sherlock ID
+        sherlock_id = sherlocks_module.resolve_sherlock_id(sherlock_identifier)
+        if sherlock_id is None:
+            console.print(f"[red]Could not resolve sherlock identifier: {sherlock_identifier}[/red]")
+            return
+        
         result = sherlocks_module.get_sherlock_progress(sherlock_id)
         
         if result and 'data' in result:
@@ -297,12 +384,19 @@ def progress(sherlock_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @sherlocks.command()
-@click.argument('sherlock_id', type=int)
-def tasks(sherlock_id):
+@click.argument('sherlock_identifier')
+def tasks(sherlock_identifier):
     """Get sherlock tasks"""
     try:
         api_client = HTBAPIClient()
         sherlocks_module = SherlocksModule(api_client)
+        
+        # Resolve sherlock identifier to sherlock ID
+        sherlock_id = sherlocks_module.resolve_sherlock_id(sherlock_identifier)
+        if sherlock_id is None:
+            console.print(f"[red]Could not resolve sherlock identifier: {sherlock_identifier}[/red]")
+            return
+        
         result = sherlocks_module.get_sherlock_tasks(sherlock_id)
         
         if result and 'data' in result:
@@ -331,14 +425,21 @@ def tasks(sherlock_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @sherlocks.command()
-@click.argument('sherlock_id', type=int)
+@click.argument('sherlock_identifier')
 @click.argument('task_id', type=int)
 @click.argument('flag')
-def submit_flag(sherlock_id, task_id, flag):
+def submit_flag(sherlock_identifier, task_id, flag):
     """Submit flag for a specific sherlock task"""
     try:
         api_client = HTBAPIClient()
         sherlocks_module = SherlocksModule(api_client)
+        
+        # Resolve sherlock identifier to sherlock ID
+        sherlock_id = sherlocks_module.resolve_sherlock_id(sherlock_identifier)
+        if sherlock_id is None:
+            console.print(f"[red]Could not resolve sherlock identifier: {sherlock_identifier}[/red]")
+            return
+        
         result = sherlocks_module.submit_sherlock_task_flag(sherlock_id, task_id, flag)
         
         if result:
@@ -355,12 +456,19 @@ def submit_flag(sherlock_id, task_id, flag):
         console.print(f"[red]Error: {e}[/red]")
 
 @sherlocks.command()
-@click.argument('sherlock_id', type=int)
-def writeup(sherlock_id):
+@click.argument('sherlock_identifier')
+def writeup(sherlock_identifier):
     """Get sherlock writeup"""
     try:
         api_client = HTBAPIClient()
         sherlocks_module = SherlocksModule(api_client)
+        
+        # Resolve sherlock identifier to sherlock ID
+        sherlock_id = sherlocks_module.resolve_sherlock_id(sherlock_identifier)
+        if sherlock_id is None:
+            console.print(f"[red]Could not resolve sherlock identifier: {sherlock_identifier}[/red]")
+            return
+        
         result = sherlocks_module.get_sherlock_writeup(sherlock_id)
         
         if result and 'data' in result:
@@ -378,12 +486,19 @@ def writeup(sherlock_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @sherlocks.command()
-@click.argument('sherlock_id', type=int)
-def writeup_official(sherlock_id):
+@click.argument('sherlock_identifier')
+def writeup_official(sherlock_identifier):
     """Get official sherlock writeup"""
     try:
         api_client = HTBAPIClient()
         sherlocks_module = SherlocksModule(api_client)
+        
+        # Resolve sherlock identifier to sherlock ID
+        sherlock_id = sherlocks_module.resolve_sherlock_id(sherlock_identifier)
+        if sherlock_id is None:
+            console.print(f"[red]Could not resolve sherlock identifier: {sherlock_identifier}[/red]")
+            return
+        
         result = sherlocks_module.get_sherlock_writeup_official(sherlock_id)
         
         if result and 'data' in result:

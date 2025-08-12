@@ -163,35 +163,45 @@ echo "flag{your_flag_here}" | .venv/bin/htbcli machines submit "machine-name"
 # Get sherlock categories
 .venv/bin/htbcli sherlocks categories
 
-# Get sherlock info by ID
+# Get sherlock info by ID or name
 .venv/bin/htbcli sherlocks info 123
+.venv/bin/htbcli sherlocks info "brutus"
 
 # Download sherlock file (default behavior)
 .venv/bin/htbcli sherlocks download 123
+.venv/bin/htbcli sherlocks download "brutus"
 
 # Show download link only
 .venv/bin/htbcli sherlocks download 123 --link-only
+.venv/bin/htbcli sherlocks download "brutus" --link-only
 
 # Download sherlock file with custom filename
 .venv/bin/htbcli sherlocks download 123 --output my_sherlock.zip
+.venv/bin/htbcli sherlocks download "brutus" --output brutus.zip
 
 # Start playing a sherlock
 .venv/bin/htbcli sherlocks play 123
+.venv/bin/htbcli sherlocks play "brutus"
 
 # Get sherlock progress
 .venv/bin/htbcli sherlocks progress 123
+.venv/bin/htbcli sherlocks progress "brutus"
 
 # Get sherlock tasks
 .venv/bin/htbcli sherlocks tasks 123
+.venv/bin/htbcli sherlocks tasks "brutus"
 
 # Submit flag for a specific sherlock task
 .venv/bin/htbcli sherlocks submit-flag 123 456 "flag{your_flag_here}"
+.venv/bin/htbcli sherlocks submit-flag "brutus" 456 "flag{your_flag_here}"
 
 # Get sherlock writeup
 .venv/bin/htbcli sherlocks writeup 123
+.venv/bin/htbcli sherlocks writeup "brutus"
 
 # Get official sherlock writeup
 .venv/bin/htbcli sherlocks writeup-official 123
+.venv/bin/htbcli sherlocks writeup-official "brutus"
 ```
 
 ## Available Modules
