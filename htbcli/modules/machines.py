@@ -285,7 +285,7 @@ def active(debug, json_output):
         machines_module = MachinesModule(api_client)
         result = machines_module.get_vm_status()
         
-        if handle_debug_option(debug, result, "Debug: Active Machine API Response", json_output, json_output):
+        if handle_debug_option(debug, result, "Debug: Active Machine API Response", json_output):
             return
         
         if result and result.get('info'):
@@ -681,7 +681,7 @@ def recommended(debug, json_output):
         machines_module = MachinesModule(api_client)
         result = machines_module.get_machine_recommended()
         
-        if handle_debug_option(debug, result, "Debug: Recommended Machines API Response", json_output, json_output):
+        if handle_debug_option(debug, result, "Debug: Recommended Machines API Response", json_output):
             return
         
         if result:

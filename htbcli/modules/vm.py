@@ -161,9 +161,9 @@ def vm():
 
 @vm.command()
 @click.argument('machine_identifier')
-@click.option('--wait', is_flag=True, help='Wait for VM to be ready (poll every 5 seconds until isSpawning=False and IP is available)')
+@click.option('--no-wait', is_flag=True, help='Do not wait for VM to be ready (spawn and exit immediately)')
 @click.option('--max-wait', default=300, help='Maximum wait time in seconds (default: 300)')
-def spawn(machine_identifier, wait, max_wait):
+def spawn(machine_identifier, no_wait, max_wait):
     """Spawn a virtual machine (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -185,8 +185,8 @@ def spawn(machine_identifier, wait, max_wait):
         else:
             console.print("[yellow]No response from VM spawn[/yellow]")
         
-        # If --wait flag is provided, wait for VM to be ready
-        if wait:
+        # Wait for VM to be ready by default, unless --no-wait flag is provided
+        if not no_wait:
             console.print("\n[blue]Waiting for VM to be ready...[/blue]")
             wait_result = vm_module.wait_for_vm_ready(machine_identifier, max_wait)
             
@@ -202,6 +202,8 @@ def spawn(machine_identifier, wait, max_wait):
                 ))
             else:
                 console.print(f"[red]Error waiting for VM: {wait_result.get('error', 'Unknown error')}[/red]")
+        else:
+            console.print("\n[yellow]Skipping wait - use 'vm wait <machine>' to check status later[/yellow]")
                 
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
