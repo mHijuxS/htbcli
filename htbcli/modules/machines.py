@@ -339,12 +339,19 @@ def active(responses, option):
 
 
 @machines.command()
-@click.argument('machine_id', type=int)
-def activity(machine_id):
-    """Get machine activity"""
+@click.argument('machine_identifier')
+def activity(machine_identifier):
+    """Get machine activity (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
+        
+        # Resolve machine identifier to machine ID
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+        
         result = machines_module.get_machine_activity(machine_id)
         
         if result and 'data' in result:
@@ -371,27 +378,40 @@ def activity(machine_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-@click.argument('machine_id', type=int)
-def changelog(machine_id):
-    """Get machine changelog"""
+@click.argument('machine_identifier')
+def changelog(machine_identifier):
+    """Get machine changelog (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
+        
+        # Resolve machine identifier to machine ID
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+        
         result = machines_module.get_machine_changelog(machine_id)
         
-        if result and 'data' in result:
-            changelog_data = result['data']
+        if result and 'info' in result:
+            changelog_data = result['info']
             
             table = Table(title=f"Machine Changelog (ID: {machine_id})")
-            table.add_column("Date", style="cyan")
-            table.add_column("Type", style="green")
-            table.add_column("Description", style="yellow")
+            table.add_column("ID", style="cyan")
+            table.add_column("Title", style="green")
+            table.add_column("Type", style="yellow")
+            table.add_column("Description", style="magenta")
+            table.add_column("Created At", style="blue")
+            table.add_column("Released", style="red")
             
             for change in changelog_data:
                 table.add_row(
-                    str(change.get('date', 'N/A') or 'N/A'),
+                    str(change.get('id', 'N/A') or 'N/A'),
+                    str(change.get('title', 'N/A') or 'N/A'),
                     str(change.get('type', 'N/A') or 'N/A'),
-                    str(change.get('description', 'N/A') or 'N/A')
+                    str(change.get('description', 'N/A') or 'N/A'),
+                    str(change.get('created_at', 'N/A') or 'N/A'),
+                    str(change.get('released', 'N/A') or 'N/A')
                 )
             
             console.print(table)
@@ -401,30 +421,47 @@ def changelog(machine_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-@click.argument('machine_id', type=int)
-def creators(machine_id):
-    """Get machine creators"""
+@click.argument('machine_identifier')
+def creators(machine_identifier):
+    """Get machine creators (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
+        
+        # Resolve machine identifier to machine ID
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+        
         result = machines_module.get_machine_creators(machine_id)
         
-        if result and 'data' in result:
-            creators_data = result['data']
+        if result:
+            # Handle both creator and cocreators
+            creators_data = []
+            if result.get('creator'):
+                creators_data.extend(result['creator'])
+            if result.get('cocreators'):
+                creators_data.extend(result['cocreators'])
             
-            table = Table(title=f"Machine Creators (ID: {machine_id})")
-            table.add_column("Username", style="cyan")
-            table.add_column("Role", style="green")
-            table.add_column("Avatar", style="yellow")
-            
-            for creator in creators_data:
-                table.add_row(
-                    str(creator.get('username', 'N/A') or 'N/A'),
-                    str(creator.get('role', 'N/A') or 'N/A'),
-                    str(creator.get('avatar', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+            if creators_data:
+                table = Table(title=f"Machine Creators (ID: {machine_id})")
+                table.add_column("ID", style="cyan")
+                table.add_column("Name", style="green")
+                table.add_column("Avatar", style="yellow")
+                table.add_column("Is Respected", style="magenta")
+                
+                for creator in creators_data:
+                    table.add_row(
+                        str(creator.get('id', 'N/A') or 'N/A'),
+                        str(creator.get('name', 'N/A') or 'N/A'),
+                        str(creator.get('avatar', 'N/A') or 'N/A'),
+                        str(creator.get('isRespected', 'N/A') or 'N/A')
+                    )
+                
+                console.print(table)
+            else:
+                console.print("[yellow]No creators found[/yellow]")
         else:
             console.print("[yellow]No creators found[/yellow]")
     except Exception as e:
@@ -652,24 +689,32 @@ def recommended():
         machines_module = MachinesModule(api_client)
         result = machines_module.get_machine_recommended()
         
-        if result and 'data' in result:
-            recommended_data = result['data']
+        if result:
+            # Handle card1 and card2 structure
+            recommended_data = []
+            if result.get('card1'):
+                recommended_data.append(result['card1'])
+            if result.get('card2'):
+                recommended_data.append(result['card2'])
             
-            table = Table(title="Recommended Machines")
-            table.add_column("Name", style="cyan")
-            table.add_column("OS", style="green")
-            table.add_column("Difficulty", style="yellow")
-            table.add_column("Points", style="magenta")
-            
-            for machine in recommended_data:
-                table.add_row(
-                    str(machine.get('name', 'N/A') or 'N/A'),
-                    str(machine.get('os', 'N/A') or 'N/A'),
-                    str(machine.get('difficulty', 'N/A') or 'N/A'),
-                    str(machine.get('points', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+            if recommended_data:
+                table = Table(title="Recommended Machines")
+                table.add_column("Name", style="cyan")
+                table.add_column("OS", style="green")
+                table.add_column("Difficulty", style="yellow")
+                table.add_column("Points", style="magenta")
+                
+                for machine in recommended_data:
+                    table.add_row(
+                        str(machine.get('name', 'N/A') or 'N/A'),
+                        str(machine.get('os', 'N/A') or 'N/A'),
+                        str(machine.get('difficulty', 'N/A') or 'N/A'),
+                        str(machine.get('points', 'N/A') or 'N/A')
+                    )
+                
+                console.print(table)
+            else:
+                console.print("[yellow]No recommended machines found[/yellow]")
         else:
             console.print("[yellow]No recommended machines found[/yellow]")
     except Exception as e:
@@ -683,19 +728,19 @@ def tags():
         machines_module = MachinesModule(api_client)
         result = machines_module.get_machine_tags_list()
         
-        if result and 'data' in result:
-            tags_data = result['data']
+        if result and 'info' in result:
+            tags_data = result['info']
             
             table = Table(title="Machine Tags")
             table.add_column("ID", style="cyan")
             table.add_column("Name", style="green")
-            table.add_column("Type", style="yellow")
+            table.add_column("Category", style="yellow")
             
             for tag in tags_data:
                 table.add_row(
                     str(tag.get('id', 'N/A') or 'N/A'),
                     str(tag.get('name', 'N/A') or 'N/A'),
-                    str(tag.get('type', 'N/A') or 'N/A')
+                    str(tag.get('category', 'N/A') or 'N/A')
                 )
             
             console.print(table)
@@ -736,13 +781,20 @@ def unreleased():
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-@click.argument('machine_id', type=int)
+@click.argument('machine_identifier')
 @click.option('--period', default='1m', help='Time period for graph')
-def graph_activity(machine_id, period):
-    """Get machine graph activity"""
+def graph_activity(machine_identifier, period):
+    """Get machine graph activity (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
+        
+        # Resolve machine identifier to machine ID
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+        
         result = machines_module.get_machine_graph_activity(machine_id, period)
         
         if result:
@@ -759,12 +811,19 @@ def graph_activity(machine_id, period):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-@click.argument('machine_id', type=int)
-def graph_matrix(machine_id):
-    """Get machine graph matrix"""
+@click.argument('machine_identifier')
+def graph_matrix(machine_identifier):
+    """Get machine graph matrix (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
+        
+        # Resolve machine identifier to machine ID
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+        
         result = machines_module.get_machine_graph_matrix(machine_id)
         
         if result:
@@ -780,12 +839,19 @@ def graph_matrix(machine_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-@click.argument('machine_id', type=int)
-def graph_difficulty(machine_id):
-    """Get machine graph difficulty"""
+@click.argument('machine_identifier')
+def graph_difficulty(machine_identifier):
+    """Get machine graph difficulty (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
+        
+        # Resolve machine identifier to machine ID
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+        
         result = machines_module.get_machine_graph_owns_difficulty(machine_id)
         
         if result:
@@ -836,12 +902,19 @@ def retired_list(page, per_page):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-@click.argument('machine_id', type=int)
-def owns_top(machine_id):
-    """Get top 25 owners for a machine"""
+@click.argument('machine_identifier')
+def owns_top(machine_identifier):
+    """Get top 25 owners for a machine (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
+        
+        # Resolve machine identifier to machine ID
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+        
         result = machines_module.get_machine_owns_top(machine_id)
         
         if result and 'info' in result:
@@ -903,12 +976,19 @@ def recommended_retired():
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-@click.argument('machine_id', type=int)
-def reviews(machine_id):
-    """Get machine reviews"""
+@click.argument('machine_identifier')
+def reviews(machine_identifier):
+    """Get machine reviews (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
+        
+        # Resolve machine identifier to machine ID
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+        
         result = machines_module.get_machine_reviews(machine_id)
         
         if result and 'data' in result:
@@ -935,12 +1015,19 @@ def reviews(machine_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-@click.argument('machine_id', type=int)
-def reviews_user(machine_id):
-    """Get user's review for machine"""
+@click.argument('machine_identifier')
+def reviews_user(machine_identifier):
+    """Get user's review for machine (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
+        
+        # Resolve machine identifier to machine ID
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+        
         result = machines_module.get_machine_reviews_user(machine_id)
         
         if result and 'data' in result:
@@ -960,12 +1047,19 @@ def reviews_user(machine_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-@click.argument('machine_id', type=int)
-def machine_tags(machine_id):
-    """Get machine tags"""
+@click.argument('machine_identifier')
+def machine_tags(machine_identifier):
+    """Get machine tags (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
+        
+        # Resolve machine identifier to machine ID
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+        
         result = machines_module.get_machine_tags(machine_id)
         
         if result and 'data' in result:
@@ -1098,12 +1192,19 @@ def walkthrough_feedback_choices():
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-@click.argument('machine_id', type=int)
-def walkthroughs(machine_id):
-    """Get machine walkthroughs"""
+@click.argument('machine_identifier')
+def walkthroughs(machine_identifier):
+    """Get machine walkthroughs (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
+        
+        # Resolve machine identifier to machine ID
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+        
         result = machines_module.get_machine_walkthroughs(machine_id)
         
         if result and 'data' in result:
@@ -1130,12 +1231,19 @@ def walkthroughs(machine_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-@click.argument('machine_id', type=int)
-def writeup(machine_id):
-    """Get machine writeup"""
+@click.argument('machine_identifier')
+def writeup(machine_identifier):
+    """Get machine writeup (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
+        
+        # Resolve machine identifier to machine ID
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+        
         result = machines_module.get_machine_writeup(machine_id)
         
         if result:
@@ -1151,12 +1259,19 @@ def writeup(machine_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-@click.argument('machine_id', type=int)
-def adventure(machine_id):
-    """Get machine adventure"""
+@click.argument('machine_identifier')
+def adventure(machine_identifier):
+    """Get machine adventure (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
+        
+        # Resolve machine identifier to machine ID
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+        
         result = machines_module.get_machines_adventure(machine_id)
         
         if result:
@@ -1172,12 +1287,19 @@ def adventure(machine_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-@click.argument('machine_id', type=int)
-def tasks(machine_id):
-    """Get machine tasks"""
+@click.argument('machine_identifier')
+def tasks(machine_identifier):
+    """Get machine tasks (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
+        
+        # Resolve machine identifier to machine ID
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+        
         result = machines_module.get_machines_tasks(machine_id)
         
         if result and 'data' in result:
