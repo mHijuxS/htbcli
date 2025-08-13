@@ -150,9 +150,10 @@ def list_universities(page, per_page, responses, option):
 
 @universities.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('university_id', type=int)
-def profile(university_id, debug):
+def profile(university_id, debug, json_output):
     """Get university profile"""
     try:
         api_client = HTBAPIClient()
@@ -215,9 +216,10 @@ def rankings(page, per_page):
 
 @universities.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('university_id', type=int)
-def stats(university_id, debug):
+def stats(university_id, debug, json_output):
     """Get university statistics"""
     try:
         api_client = HTBAPIClient()
@@ -239,9 +241,10 @@ def stats(university_id, debug):
 
 @universities.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('university_id', type=int)
-def members(university_id, debug):
+def members(university_id, debug, json_output):
     """Get university members"""
     try:
         api_client = HTBAPIClient()
@@ -309,9 +312,10 @@ def new_list(page, per_page):
 
 @universities.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def user_stats(user_id, debug):
+def user_stats(user_id, debug, json_output):
     """Get university owns statistics for a user"""
     try:
         api_client = HTBAPIClient()

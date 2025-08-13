@@ -131,9 +131,10 @@ def list_prolabs(page, per_page):
 
 @prolabs.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('prolab_slug')
-def info(prolab_slug, debug):
+def info(prolab_slug, debug, json_output):
     """Get prolab info by slug"""
     try:
         api_client = HTBAPIClient()
@@ -159,8 +160,9 @@ def info(prolab_slug, debug):
 
 @prolabs.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def recommended(debug):
+def recommended(debug, json_output):
     """Get recommended prolabs"""
     try:
         api_client = HTBAPIClient()
@@ -192,9 +194,10 @@ def recommended(debug):
 
 @prolabs.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('prolab_id', type=int)
-def activity(prolab_id, debug):
+def activity(prolab_id, debug, json_output):
     """Get prolab activity"""
     try:
         api_client = HTBAPIClient()
@@ -226,9 +229,10 @@ def activity(prolab_id, debug):
 
 @prolabs.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('prolab_id', type=int)
-def changelog(prolab_id, debug):
+def changelog(prolab_id, debug, json_output):
     """Get prolab changelog"""
     try:
         api_client = HTBAPIClient()
@@ -258,9 +262,10 @@ def changelog(prolab_id, debug):
 
 @prolabs.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('prolab_id', type=int)
-def writeup(prolab_id, debug):
+def writeup(prolab_id, debug, json_output):
     """Get prolab writeup"""
     try:
         api_client = HTBAPIClient()
@@ -284,9 +289,10 @@ def writeup(prolab_id, debug):
 
 @prolabs.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('prolab_id', type=int)
-def writeup_official(prolab_id, debug):
+def writeup_official(prolab_id, debug, json_output):
     """Get official prolab writeup"""
     try:
         api_client = HTBAPIClient()

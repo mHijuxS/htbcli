@@ -155,9 +155,10 @@ def list_ranking(page, per_page):
 
 @ranking.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('ranking_slug')
-def info(ranking_slug, debug):
+def info(ranking_slug, debug, json_output):
     """Get ranking info by slug"""
     try:
         api_client = HTBAPIClient()
@@ -184,8 +185,9 @@ def info(ranking_slug, debug):
 
 @ranking.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def recommended(debug):
+def recommended(debug, json_output):
     """Get recommended rankings"""
     try:
         api_client = HTBAPIClient()
@@ -217,9 +219,10 @@ def recommended(debug):
 
 @ranking.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('ranking_id', type=int)
-def activity(ranking_id, debug):
+def activity(ranking_id, debug, json_output):
     """Get ranking activity"""
     try:
         api_client = HTBAPIClient()
@@ -251,9 +254,10 @@ def activity(ranking_id, debug):
 
 @ranking.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('ranking_id', type=int)
-def changelog(ranking_id, debug):
+def changelog(ranking_id, debug, json_output):
     """Get ranking changelog"""
     try:
         api_client = HTBAPIClient()
@@ -283,9 +287,10 @@ def changelog(ranking_id, debug):
 
 @ranking.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('ranking_id', type=int)
-def writeup(ranking_id, debug):
+def writeup(ranking_id, debug, json_output):
     """Get ranking writeup"""
     try:
         api_client = HTBAPIClient()
@@ -309,9 +314,10 @@ def writeup(ranking_id, debug):
 
 @ranking.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('ranking_id', type=int)
-def writeup_official(ranking_id, debug):
+def writeup_official(ranking_id, debug, json_output):
     """Get official ranking writeup"""
     try:
         api_client = HTBAPIClient()

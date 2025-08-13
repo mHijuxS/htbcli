@@ -147,14 +147,15 @@ def user():
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
-def info(debug):
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def info(debug, json_output):
     """Get user information"""
     try:
         api_client = HTBAPIClient()
         user_module = UserModule(api_client)
         result = user_module.get_user_info()
         
-        if handle_debug_option(debug, result, "Debug: User Info API Response"):
+        if handle_debug_option(debug, result, "Debug: User Info API Response", json_output):
             return
         
         if result and 'info' in result:
@@ -183,16 +184,17 @@ def info(debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def profile(user_id, debug):
+def profile(user_id, debug, json_output):
     """Get user profile"""
     try:
         api_client = HTBAPIClient()
         user_module = UserModule(api_client)
         result = user_module.get_user_profile_basic(user_id)
         
-        if handle_debug_option(debug, result, f"Debug: User Profile API Response (ID: {user_id})"):
+        if handle_debug_option(debug, result, f"Debug: User Profile API Response (ID: {user_id}, json_output)"):
             return
         
         if result and 'profile' in result:
@@ -214,16 +216,17 @@ def profile(user_id, debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def activity(user_id, debug):
+def activity(user_id, debug, json_output):
     """Get user activity"""
     try:
         api_client = HTBAPIClient()
         user_module = UserModule(api_client)
         result = user_module.get_user_profile_activity(user_id)
         
-        if handle_debug_option(debug, result, f"Debug: User Activity API Response (ID: {user_id})"):
+        if handle_debug_option(debug, result, f"Debug: User Activity API Response (ID: {user_id}, json_output)"):
             return
         
         if result and 'data' in result:
@@ -251,9 +254,10 @@ def activity(user_id, debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def badges(user_id, debug):
+def badges(user_id, debug, json_output):
     """Get user badges"""
     try:
         api_client = HTBAPIClient()
@@ -285,9 +289,10 @@ def badges(user_id, debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def bloods(user_id, debug):
+def bloods(user_id, debug, json_output):
     """Get user bloods"""
     try:
         api_client = HTBAPIClient()
@@ -555,9 +560,10 @@ def tracks(responses, option):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def follow(user_id, debug):
+def follow(user_id, debug, json_output):
     """Follow a user"""
     try:
         api_client = HTBAPIClient()
@@ -578,9 +584,10 @@ def follow(user_id, debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def unfollow(user_id, debug):
+def unfollow(user_id, debug, json_output):
     """Unfollow a user"""
     try:
         api_client = HTBAPIClient()
@@ -601,9 +608,10 @@ def unfollow(user_id, debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def respect(user_id, debug):
+def respect(user_id, debug, json_output):
     """Respect a user"""
     try:
         api_client = HTBAPIClient()
@@ -624,9 +632,10 @@ def respect(user_id, debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def disrespect(user_id, debug):
+def disrespect(user_id, debug, json_output):
     """Disrespect a user"""
     try:
         api_client = HTBAPIClient()
@@ -647,11 +656,12 @@ def disrespect(user_id, debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('target_type')
 @click.argument('user_id', type=int)
 @click.argument('target_id', type=int)
-def achievement(target_type, user_id, target_id, debug):
+def achievement(target_type, user_id, target_id, debug, json_output):
     """Validate achievement/own"""
     try:
         api_client = HTBAPIClient()
@@ -674,8 +684,9 @@ def achievement(target_type, user_id, target_id, debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def anonymized_id(debug):
+def anonymized_id(debug, json_output):
     """Get user's anonymous ID"""
     try:
         api_client = HTBAPIClient()
@@ -753,8 +764,9 @@ def apptoken_list(responses, option):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def banned(debug):
+def banned(debug, json_output):
     """Check if user is banned"""
     try:
         api_client = HTBAPIClient()
@@ -774,8 +786,9 @@ def banned(debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def connection_status(debug):
+def connection_status(debug, json_output):
     """Get user connection status"""
     try:
         api_client = HTBAPIClient()
@@ -795,8 +808,9 @@ def connection_status(debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def dashboard_tabloid(debug):
+def dashboard_tabloid(debug, json_output):
     """Get user dashboard tabloid"""
     try:
         api_client = HTBAPIClient()
@@ -816,9 +830,10 @@ def dashboard_tabloid(debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def chart_machines_attack(user_id, debug):
+def chart_machines_attack(user_id, debug, json_output):
     """Get user profile machine attack chart"""
     try:
         api_client = HTBAPIClient()
@@ -839,9 +854,10 @@ def chart_machines_attack(user_id, debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def content(user_id, debug):
+def content(user_id, debug, json_output):
     """Get user profile content"""
     try:
         api_client = HTBAPIClient()
@@ -911,10 +927,11 @@ def content(user_id, debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('period')
 @click.argument('user_id', type=int)
-def graph(period, user_id, debug):
+def graph(period, user_id, debug, json_output):
     """Get user profile graph"""
     try:
         api_client = HTBAPIClient()
@@ -936,9 +953,10 @@ def graph(period, user_id, debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def progress_challenges(user_id, debug):
+def progress_challenges(user_id, debug, json_output):
     """Get user profile progress challenges"""
     try:
         api_client = HTBAPIClient()
@@ -968,9 +986,10 @@ def progress_challenges(user_id, debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def progress_fortress(user_id, debug):
+def progress_fortress(user_id, debug, json_output):
     """Get user profile progress fortress"""
     try:
         api_client = HTBAPIClient()
@@ -1000,9 +1019,10 @@ def progress_fortress(user_id, debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def progress_machines_os(user_id, debug):
+def progress_machines_os(user_id, debug, json_output):
     """Get user profile progress machines OS"""
     try:
         api_client = HTBAPIClient()
@@ -1032,9 +1052,10 @@ def progress_machines_os(user_id, debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def progress_prolab(user_id, debug):
+def progress_prolab(user_id, debug, json_output):
     """Get user profile progress prolab"""
     try:
         api_client = HTBAPIClient()
@@ -1064,9 +1085,10 @@ def progress_prolab(user_id, debug):
 
 @user.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('user_id', type=int)
-def progress_sherlocks(user_id, debug):
+def progress_sherlocks(user_id, debug, json_output):
     """Get user profile progress sherlocks"""
     try:
         api_client = HTBAPIClient()

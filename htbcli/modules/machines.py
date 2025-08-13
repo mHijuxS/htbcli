@@ -277,14 +277,15 @@ def machines():
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
-def active(debug):
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def active(debug, json_output):
     """Get currently active machine and VM status"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
         result = machines_module.get_vm_status()
         
-        if handle_debug_option(debug, result, "Debug: Active Machine API Response"):
+        if handle_debug_option(debug, result, "Debug: Active Machine API Response", json_output, json_output):
             return
         
         if result and result.get('info'):
@@ -316,9 +317,10 @@ def active(debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('machine_identifier')
-def activity(machine_identifier, debug):
+def activity(machine_identifier, debug, json_output):
     """Get machine activity (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -357,9 +359,10 @@ def activity(machine_identifier, debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('machine_identifier')
-def changelog(machine_identifier, debug):
+def changelog(machine_identifier, debug, json_output):
     """Get machine changelog (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -402,9 +405,10 @@ def changelog(machine_identifier, debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('machine_identifier')
-def creators(machine_identifier, debug):
+def creators(machine_identifier, debug, json_output):
     """Get machine creators (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -609,10 +613,11 @@ def profile(machine_slug, responses, option):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('machine_identifier', required=False)
 @click.argument('flag', required=False)
-def submit(machine_identifier, flag, debug):
+def submit(machine_identifier, flag, debug, json_output):
     """Submit flag for machine. Uses active machine if no machine specified. Flag can be provided as argument or piped from stdin."""
     try:
         api_client = HTBAPIClient()
@@ -667,15 +672,16 @@ def submit(machine_identifier, flag, debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def recommended(debug):
+def recommended(debug, json_output):
     """Get recommended machines"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
         result = machines_module.get_machine_recommended()
         
-        if handle_debug_option(debug, result, "Debug: Recommended Machines API Response"):
+        if handle_debug_option(debug, result, "Debug: Recommended Machines API Response", json_output, json_output):
             return
         
         if result:
@@ -711,8 +717,9 @@ def recommended(debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def tags(debug):
+def tags(debug, json_output):
     """Get machine tags list"""
     try:
         api_client = HTBAPIClient()
@@ -742,7 +749,8 @@ def tags(debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
-def unreleased(debug):
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def unreleased(debug, json_output):
     """Get unreleased machines"""
     try:
         api_client = HTBAPIClient()
@@ -750,11 +758,8 @@ def unreleased(debug):
         result = machines_module.get_machine_unreleased()
         
         if debug:
-            console.print(Panel.fit(
-                f"[bold green]Raw API Response[/bold green]\n"
-                f"{result}",
-                title="Debug: Unreleased Machines API Response"
-            ))
+            from htbcli.debug_handler import debug_response
+            debug_response(result, "Debug: Unreleased Machines API Response", json_output)
             return
         
         if result and 'data' in result:
@@ -766,6 +771,8 @@ def unreleased(debug):
             table.add_column("Difficulty", style="yellow")
             table.add_column("Release Date", style="magenta")
             table.add_column("Creators", style="blue")
+            table.add_column("Retiring Machine", style="red")
+            table.add_column("Retiring Difficulty", style="yellow")
             
             for machine in unreleased_data:
                 # Use correct field names from API specification
@@ -788,12 +795,22 @@ def unreleased(debug):
                 
                 creators_str = ', '.join(creators) if creators else 'N/A'
                 
+                # Handle retiring machine information
+                retiring_machine = 'N/A'
+                retiring_difficulty = 'N/A'
+                retiring_info = machine.get('retiring')
+                if retiring_info and isinstance(retiring_info, dict):
+                    retiring_machine = retiring_info.get('name', 'N/A') or 'N/A'
+                    retiring_difficulty = retiring_info.get('difficulty_text', 'N/A') or 'N/A'
+                
                 table.add_row(
                     str(machine.get('name', 'N/A') or 'N/A'),
                     str(machine.get('os', 'N/A') or 'N/A'),
                     str(difficulty),
                     str(release_date),
-                    creators_str
+                    creators_str,
+                    str(retiring_machine),
+                    str(retiring_difficulty)
                 )
             
             console.print(table)
@@ -834,9 +851,10 @@ def graph_activity(machine_identifier, period):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('machine_identifier')
-def graph_matrix(machine_identifier, debug):
+def graph_matrix(machine_identifier, debug, json_output):
     """Get machine graph matrix (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -864,9 +882,10 @@ def graph_matrix(machine_identifier, debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('machine_identifier')
-def graph_difficulty(machine_identifier, debug):
+def graph_difficulty(machine_identifier, debug, json_output):
     """Get machine graph difficulty (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -929,9 +948,10 @@ def retired_list(page, per_page):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('machine_identifier')
-def owns_top(machine_identifier, debug):
+def owns_top(machine_identifier, debug, json_output):
     """Get top 25 owners for a machine (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -972,8 +992,9 @@ def owns_top(machine_identifier, debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def recommended_retired(debug):
+def recommended_retired(debug, json_output):
     """Get recommended retired machines"""
     try:
         api_client = HTBAPIClient()
@@ -1007,9 +1028,10 @@ def recommended_retired(debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('machine_identifier')
-def reviews(machine_identifier, debug):
+def reviews(machine_identifier, debug, json_output):
     """Get machine reviews (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -1048,9 +1070,10 @@ def reviews(machine_identifier, debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('machine_identifier')
-def reviews_user(machine_identifier, debug):
+def reviews_user(machine_identifier, debug, json_output):
     """Get user's review for machine (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -1082,9 +1105,10 @@ def reviews_user(machine_identifier, debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('machine_identifier')
-def machine_tags(machine_identifier, debug):
+def machine_tags(machine_identifier, debug, json_output):
     """Get machine tags (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -1156,8 +1180,9 @@ def todo_list(page, per_page):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def walkthrough_random(debug):
+def walkthrough_random(debug, json_output):
     """Get random walkthrough"""
     try:
         api_client = HTBAPIClient()
@@ -1177,8 +1202,9 @@ def walkthrough_random(debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def walkthrough_languages(debug):
+def walkthrough_languages(debug, json_output):
     """Get walkthrough language options"""
     try:
         api_client = HTBAPIClient()
@@ -1206,8 +1232,9 @@ def walkthrough_languages(debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def walkthrough_feedback_choices(debug):
+def walkthrough_feedback_choices(debug, json_output):
     """Get walkthrough feedback choices"""
     try:
         api_client = HTBAPIClient()
@@ -1235,9 +1262,10 @@ def walkthrough_feedback_choices(debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('machine_identifier')
-def walkthroughs(machine_identifier, debug):
+def walkthroughs(machine_identifier, debug, json_output):
     """Get machine walkthroughs (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -1276,9 +1304,10 @@ def walkthroughs(machine_identifier, debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('machine_identifier')
-def writeup(machine_identifier, debug):
+def writeup(machine_identifier, debug, json_output):
     """Get machine writeup (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -1306,9 +1335,10 @@ def writeup(machine_identifier, debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('machine_identifier')
-def adventure(machine_identifier, debug):
+def adventure(machine_identifier, debug, json_output):
     """Get machine adventure (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -1336,9 +1366,10 @@ def adventure(machine_identifier, debug):
 
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('machine_identifier')
-def tasks(machine_identifier, debug):
+def tasks(machine_identifier, debug, json_output):
     """Get machine tasks (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()

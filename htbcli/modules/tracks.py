@@ -87,9 +87,10 @@ def list_tracks(page, per_page):
 
 @tracks.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('track_slug')
-def info(track_slug, debug):
+def info(track_slug, debug, json_output):
     """Get track info by slug"""
     try:
         api_client = HTBAPIClient()
@@ -115,9 +116,10 @@ def info(track_slug, debug):
 
 @tracks.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('track_id', type=int)
-def activity(track_id, debug):
+def activity(track_id, debug, json_output):
     """Get track activity"""
     try:
         api_client = HTBAPIClient()
@@ -149,9 +151,10 @@ def activity(track_id, debug):
 
 @tracks.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('track_id', type=int)
-def writeup(track_id, debug):
+def writeup(track_id, debug, json_output):
     """Get track writeup"""
     try:
         api_client = HTBAPIClient()

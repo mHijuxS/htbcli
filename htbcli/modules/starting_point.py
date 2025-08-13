@@ -87,9 +87,10 @@ def list_starting_point(page, per_page):
 
 @starting_point.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('starting_point_slug')
-def info(starting_point_slug, debug):
+def info(starting_point_slug, debug, json_output):
     """Get starting point info by slug"""
     try:
         api_client = HTBAPIClient()
@@ -115,9 +116,10 @@ def info(starting_point_slug, debug):
 
 @starting_point.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('starting_point_id', type=int)
-def activity(starting_point_id, debug):
+def activity(starting_point_id, debug, json_output):
     """Get starting point activity"""
     try:
         api_client = HTBAPIClient()
@@ -149,9 +151,10 @@ def activity(starting_point_id, debug):
 
 @starting_point.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('starting_point_id', type=int)
-def writeup(starting_point_id, debug):
+def writeup(starting_point_id, debug, json_output):
     """Get starting point writeup"""
     try:
         api_client = HTBAPIClient()

@@ -63,8 +63,9 @@ def connection():
 
 @connection.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def status(debug):
+def status(debug, json_output):
     """Get current active connections"""
     try:
         api_client = HTBAPIClient()
@@ -88,8 +89,9 @@ def status(debug):
 
 @connection.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def servers(debug):
+def servers(debug, json_output):
     """Get list of VPN servers"""
     try:
         api_client = HTBAPIClient()
@@ -123,8 +125,9 @@ def servers(debug):
 
 @connection.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def connections(debug):
+def connections(debug, json_output):
     """Get last set connections"""
     try:
         api_client = HTBAPIClient()
@@ -170,9 +173,10 @@ def connections(debug):
 
 @connection.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('vpn_id', type=int)
-def download_udp(vpn_id, debug):
+def download_udp(vpn_id, debug, json_output):
     """Download UDP VPN config"""
     try:
         api_client = HTBAPIClient()
@@ -194,9 +198,10 @@ def download_udp(vpn_id, debug):
 
 @connection.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('vpn_id', type=int)
-def download_tcp(vpn_id, debug):
+def download_tcp(vpn_id, debug, json_output):
     """Download TCP VPN config"""
     try:
         api_client = HTBAPIClient()
@@ -218,9 +223,10 @@ def download_tcp(vpn_id, debug):
 
 @connection.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('vpn_id', type=int)
-def switch(vpn_id, debug):
+def switch(vpn_id, debug, json_output):
     """Switch VPN server"""
     try:
         api_client = HTBAPIClient()
@@ -242,9 +248,10 @@ def switch(vpn_id, debug):
 
 @connection.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('prolab_id', type=int)
-def prolab_status(prolab_id, debug):
+def prolab_status(prolab_id, debug, json_output):
     """Get VPN server status for prolab"""
     try:
         api_client = HTBAPIClient()
@@ -268,9 +275,10 @@ def prolab_status(prolab_id, debug):
 
 @connection.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('product_name')
-def product_status(product_name, debug):
+def product_status(product_name, debug, json_output):
     """Get VPN server status for product"""
     try:
         api_client = HTBAPIClient()
@@ -294,9 +302,10 @@ def product_status(product_name, debug):
 
 @connection.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('prolab_id', type=int)
-def prolab_servers(prolab_id, debug):
+def prolab_servers(prolab_id, debug, json_output):
     """Get prolab VPN servers"""
     try:
         api_client = HTBAPIClient()

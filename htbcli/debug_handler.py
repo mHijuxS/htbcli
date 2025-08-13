@@ -3,6 +3,7 @@ Debug handler utility for HTB CLI
 """
 
 import functools
+import json
 from typing import Dict, Any, Optional, Callable
 from rich.console import Console
 from rich.panel import Panel
@@ -10,21 +11,27 @@ import click
 
 console = Console()
 
-def debug_response(result: Dict[str, Any], title: str = "Debug: API Response") -> None:
+def debug_response(result: Dict[str, Any], title: str = "Debug: API Response", json_output: bool = False) -> None:
     """
     Generic debug handler to display raw API responses
     
     Args:
         result: The API response data to display
         title: The title for the debug panel
+        json_output: If True, output as JSON for jq parsing. If False, use Rich formatting.
     """
-    console.print(Panel.fit(
-        f"[bold green]Raw API Response[/bold green]\n"
-        f"{result}",
-        title=title
-    ))
+    if json_output:
+        # Output as proper JSON for jq parsing
+        print(json.dumps(result, indent=2, default=str))
+    else:
+        # Use Rich formatting for human-readable display
+        console.print(Panel.fit(
+            f"[bold green]Raw API Response[/bold green]\n"
+            f"{result}",
+            title=title
+        ))
 
-def handle_debug_option(debug: bool, result: Dict[str, Any], title: str = "Debug: API Response") -> bool:
+def handle_debug_option(debug: bool, result: Dict[str, Any], title: str = "Debug: API Response", json_output: bool = False) -> bool:
     """
     Generic debug option handler that can be used in any command
     
@@ -32,12 +39,13 @@ def handle_debug_option(debug: bool, result: Dict[str, Any], title: str = "Debug
         debug: Boolean flag indicating if debug mode is enabled
         result: The API response data to display
         title: The title for the debug panel
+        json_output: If True, output as JSON for jq parsing. If False, use Rich formatting.
         
     Returns:
         bool: True if debug was handled (should return early), False otherwise
     """
     if debug:
-        debug_response(result, title)
+        debug_response(result, title, json_output)
         return True
     return False
 
@@ -53,10 +61,12 @@ def with_debug_option(func: Callable) -> Callable:
             pass
     """
     @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+    @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        # Extract debug flag from kwargs
+        # Extract debug flags from kwargs
         debug = kwargs.pop('debug', False)
+        json_output = kwargs.pop('json_output', False)
         
         # Call the original function
         result = func(*args, **kwargs)
@@ -66,7 +76,7 @@ def with_debug_option(func: Callable) -> Callable:
             # Try to determine a good title for the debug output
             func_name = func.__name__.replace('_', ' ').title()
             title = f"Debug: {func_name} API Response"
-            debug_response(result, title)
+            debug_response(result, title, json_output)
         
         return result
     
@@ -80,12 +90,14 @@ def debug_command(func: Callable) -> Callable:
     within the command function.
     """
     @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+    @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        # Extract debug flag
+        # Extract debug flags
         debug = kwargs.pop('debug', False)
+        json_output = kwargs.pop('json_output', False)
         
-        # Call the original function with debug flag
-        return func(*args, debug=debug, **kwargs)
+        # Call the original function with debug flags
+        return func(*args, debug=debug, json_output=json_output, **kwargs)
     
     return wrapper

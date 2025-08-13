@@ -250,9 +250,10 @@ def info(challenge_slug, responses, option):
 
 @challenges.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('flag')
-def submit(flag, debug):
+def submit(flag, debug, json_output):
     """Submit flag for challenge"""
     try:
         api_client = HTBAPIClient()
@@ -622,9 +623,10 @@ def download(challenge_id, output):
 
 @challenges.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('challenge_id', type=int)
-def start(challenge_id, debug):
+def start(challenge_id, debug, json_output):
     """Start a challenge"""
     try:
         api_client = HTBAPIClient()
@@ -646,9 +648,10 @@ def start(challenge_id, debug):
 
 @challenges.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('challenge_id', type=int)
-def stop(challenge_id, debug):
+def stop(challenge_id, debug, json_output):
     """Stop a challenge"""
     try:
         api_client = HTBAPIClient()
@@ -670,9 +673,10 @@ def stop(challenge_id, debug):
 
 @challenges.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('challenge_id', type=int)
-def writeup(challenge_id, debug):
+def writeup(challenge_id, debug, json_output):
     """Get challenge writeup"""
     try:
         api_client = HTBAPIClient()
@@ -729,9 +733,10 @@ def writeup_official(challenge_id, output):
 
 @challenges.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('review_id', type=int)
-def mark_helpful(review_id, debug):
+def mark_helpful(review_id, debug, json_output):
     """Mark review as helpful"""
     try:
         api_client = HTBAPIClient()
@@ -753,9 +758,10 @@ def mark_helpful(review_id, debug):
 
 @challenges.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('challenge_id', type=int)
-def reviews_user(challenge_id, debug):
+def reviews_user(challenge_id, debug, json_output):
     """Get user's review for challenge"""
     try:
         api_client = HTBAPIClient()

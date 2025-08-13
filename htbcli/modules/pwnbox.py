@@ -43,8 +43,9 @@ def pwnbox():
 
 @pwnbox.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def info(debug):
+def info(debug, json_output):
     """Get PwnBox info"""
     try:
         api_client = HTBAPIClient()
@@ -103,8 +104,9 @@ def list_pwnbox():
 
 @pwnbox.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def terminals(debug):
+def terminals(debug, json_output):
     """Get PwnBox terminals"""
     try:
         api_client = HTBAPIClient()
@@ -138,8 +140,9 @@ def terminals(debug):
 
 @pwnbox.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def terminals_list(debug):
+def terminals_list(debug, json_output):
     """Get PwnBox terminals list"""
     try:
         api_client = HTBAPIClient()

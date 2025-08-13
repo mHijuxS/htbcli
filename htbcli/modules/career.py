@@ -111,9 +111,10 @@ def list_career(page, per_page):
 
 @career.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('career_slug')
-def info(career_slug, debug):
+def info(career_slug, debug, json_output):
     """Get career info by slug"""
     try:
         api_client = HTBAPIClient()
@@ -139,8 +140,9 @@ def info(career_slug, debug):
 
 @career.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def recommended(debug):
+def recommended(debug, json_output):
     """Get recommended careers"""
     try:
         api_client = HTBAPIClient()
@@ -172,9 +174,10 @@ def recommended(debug):
 
 @career.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('career_id', type=int)
-def activity(career_id, debug):
+def activity(career_id, debug, json_output):
     """Get career activity"""
     try:
         api_client = HTBAPIClient()
@@ -206,9 +209,10 @@ def activity(career_id, debug):
 
 @career.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('career_id', type=int)
-def changelog(career_id, debug):
+def changelog(career_id, debug, json_output):
     """Get career changelog"""
     try:
         api_client = HTBAPIClient()
@@ -238,9 +242,10 @@ def changelog(career_id, debug):
 
 @career.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('career_id', type=int)
-def writeup(career_id, debug):
+def writeup(career_id, debug, json_output):
     """Get career writeup"""
     try:
         api_client = HTBAPIClient()
@@ -264,9 +269,10 @@ def writeup(career_id, debug):
 
 @career.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('career_id', type=int)
-def writeup_official(career_id, debug):
+def writeup_official(career_id, debug, json_output):
     """Get official career writeup"""
     try:
         api_client = HTBAPIClient()

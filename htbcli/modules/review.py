@@ -35,9 +35,10 @@ def review():
 
 @review.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('review_id', type=int)
-def helpful(review_id, debug):
+def helpful(review_id, debug, json_output):
     """Mark review as helpful"""
     try:
         api_client = HTBAPIClient()
@@ -59,9 +60,10 @@ def helpful(review_id, debug):
 
 @review.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('review_id', type=int)
-def unhelpful(review_id, debug):
+def unhelpful(review_id, debug, json_output):
     """Mark review as unhelpful"""
     try:
         api_client = HTBAPIClient()

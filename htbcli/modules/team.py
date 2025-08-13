@@ -197,8 +197,9 @@ def info(team_slug, responses, option):
 
 @team.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def recommended(debug):
+def recommended(debug, json_output):
     """Get recommended teams"""
     try:
         api_client = HTBAPIClient()
@@ -230,9 +231,10 @@ def recommended(debug):
 
 @team.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('team_id', type=int)
-def activity(team_id, debug):
+def activity(team_id, debug, json_output):
     """Get team activity"""
     try:
         api_client = HTBAPIClient()
@@ -264,9 +266,10 @@ def activity(team_id, debug):
 
 @team.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('team_id', type=int)
-def changelog(team_id, debug):
+def changelog(team_id, debug, json_output):
     """Get team changelog"""
     try:
         api_client = HTBAPIClient()
@@ -296,9 +299,10 @@ def changelog(team_id, debug):
 
 @team.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('team_id', type=int)
-def writeup(team_id, debug):
+def writeup(team_id, debug, json_output):
     """Get team writeup"""
     try:
         api_client = HTBAPIClient()
@@ -322,9 +326,10 @@ def writeup(team_id, debug):
 
 @team.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('team_id', type=int)
-def writeup_official(team_id, debug):
+def writeup_official(team_id, debug, json_output):
     """Get official team writeup"""
     try:
         api_client = HTBAPIClient()

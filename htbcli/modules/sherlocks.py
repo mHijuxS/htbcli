@@ -176,14 +176,15 @@ def list_sherlocks(page, per_page, responses, option):
 
 @sherlocks.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
-def categories(debug):
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def categories(debug, json_output):
     """Get sherlocks categories list"""
     try:
         api_client = HTBAPIClient()
         sherlocks_module = SherlocksModule(api_client)
         result = sherlocks_module.get_sherlocks_categories_list()
         
-        if handle_debug_option(debug, result, "Debug: Sherlock Categories API Response"):
+        if handle_debug_option(debug, result, "Debug: Sherlock Categories API Response", json_output):
             return
         
         if result and 'info' in result:
@@ -331,9 +332,10 @@ def download(sherlock_identifier, link_only, output):
 
 @sherlocks.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('sherlock_identifier')
-def play(sherlock_identifier, debug):
+def play(sherlock_identifier, debug, json_output):
     """Start or continue playing a sherlock"""
     try:
         api_client = HTBAPIClient()
@@ -347,7 +349,7 @@ def play(sherlock_identifier, debug):
         
         result = sherlocks_module.get_sherlock_play(sherlock_id)
         
-        if handle_debug_option(debug, result, f"Debug: Sherlock Play API Response (ID: {sherlock_id})"):
+        if handle_debug_option(debug, result, f"Debug: Sherlock Play API Response (ID: {sherlock_id}, json_output)"):
             return
         
         if result:
@@ -363,9 +365,10 @@ def play(sherlock_identifier, debug):
 
 @sherlocks.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('sherlock_identifier')
-def progress(sherlock_identifier, debug):
+def progress(sherlock_identifier, debug, json_output):
     """Get sherlock progress"""
     try:
         api_client = HTBAPIClient()
@@ -379,7 +382,7 @@ def progress(sherlock_identifier, debug):
         
         result = sherlocks_module.get_sherlock_progress(sherlock_id)
         
-        if handle_debug_option(debug, result, f"Debug: Sherlock Progress API Response (ID: {sherlock_id})"):
+        if handle_debug_option(debug, result, f"Debug: Sherlock Progress API Response (ID: {sherlock_id}, json_output)"):
             return
         
         if result and 'data' in result:
@@ -400,9 +403,10 @@ def progress(sherlock_identifier, debug):
 
 @sherlocks.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('sherlock_identifier')
-def tasks(sherlock_identifier, debug):
+def tasks(sherlock_identifier, debug, json_output):
     """Get sherlock tasks"""
     try:
         api_client = HTBAPIClient()
@@ -416,7 +420,7 @@ def tasks(sherlock_identifier, debug):
         
         result = sherlocks_module.get_sherlock_tasks(sherlock_id)
         
-        if handle_debug_option(debug, result, f"Debug: Sherlock Tasks API Response (ID: {sherlock_id})"):
+        if handle_debug_option(debug, result, f"Debug: Sherlock Tasks API Response (ID: {sherlock_id}, json_output)"):
             return
         
         if result and 'data' in result:
@@ -453,11 +457,12 @@ def tasks(sherlock_identifier, debug):
 
 @sherlocks.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('sherlock_identifier')
 @click.argument('task_id', type=int)
 @click.argument('flag')
-def submit_flag(sherlock_identifier, task_id, flag, debug):
+def submit_flag(sherlock_identifier, task_id, flag, debug, json_output):
     """Submit flag for a specific sherlock task"""
     try:
         api_client = HTBAPIClient()
@@ -486,9 +491,10 @@ def submit_flag(sherlock_identifier, task_id, flag, debug):
 
 @sherlocks.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('sherlock_identifier')
-def writeup(sherlock_identifier, debug):
+def writeup(sherlock_identifier, debug, json_output):
     """Get sherlock writeup"""
     try:
         api_client = HTBAPIClient()
@@ -518,9 +524,10 @@ def writeup(sherlock_identifier, debug):
 
 @sherlocks.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('sherlock_identifier')
-def writeup_official(sherlock_identifier, debug):
+def writeup_official(sherlock_identifier, debug, json_output):
     """Get official sherlock writeup"""
     try:
         api_client = HTBAPIClient()

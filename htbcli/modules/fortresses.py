@@ -136,10 +136,11 @@ def info(fortress_id, responses, option):
 
 @fortresses.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('fortress_id', type=int)
 @click.argument('flag')
-def submit_flag(fortress_id, flag, debug):
+def submit_flag(fortress_id, flag, debug, json_output):
     """Submit flag for fortress"""
     try:
         api_client = HTBAPIClient()
@@ -161,9 +162,10 @@ def submit_flag(fortress_id, flag, debug):
 
 @fortresses.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('fortress_id', type=int)
-def flags(fortress_id, debug):
+def flags(fortress_id, debug, json_output):
     """Get list of flags for fortress"""
     try:
         api_client = HTBAPIClient()
@@ -195,9 +197,10 @@ def flags(fortress_id, debug):
 
 @fortresses.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
 @click.argument('fortress_id', type=int)
-def reset(fortress_id, debug):
+def reset(fortress_id, debug, json_output):
     """Vote reset fortress"""
     try:
         api_client = HTBAPIClient()

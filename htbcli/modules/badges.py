@@ -31,14 +31,15 @@ def badges():
 
 @badges.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
-def list_badges(debug):
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def list_badges(debug, json_output):
     """List all badges"""
     try:
         api_client = HTBAPIClient()
         badges_module = BadgesModule(api_client)
         result = badges_module.get_badges()
         
-        if handle_debug_option(debug, result, "Debug: Badges API Response"):
+        if handle_debug_option(debug, result, "Debug: Badges API Response", json_output):
             return
         
         if result and 'categories' in result:
