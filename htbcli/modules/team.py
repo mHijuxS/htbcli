@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 
 console = Console()
 
@@ -195,7 +196,9 @@ def info(team_slug, responses, option):
         console.print(f"[red]Error: {e}[/red]")
 
 @team.command()
-def recommended():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def recommended(debug):
     """Get recommended teams"""
     try:
         api_client = HTBAPIClient()
@@ -226,8 +229,10 @@ def recommended():
         console.print(f"[red]Error: {e}[/red]")
 
 @team.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('team_id', type=int)
-def activity(team_id):
+def activity(team_id, debug):
     """Get team activity"""
     try:
         api_client = HTBAPIClient()
@@ -258,8 +263,10 @@ def activity(team_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @team.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('team_id', type=int)
-def changelog(team_id):
+def changelog(team_id, debug):
     """Get team changelog"""
     try:
         api_client = HTBAPIClient()
@@ -288,8 +295,10 @@ def changelog(team_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @team.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('team_id', type=int)
-def writeup(team_id):
+def writeup(team_id, debug):
     """Get team writeup"""
     try:
         api_client = HTBAPIClient()
@@ -312,8 +321,10 @@ def writeup(team_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @team.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('team_id', type=int)
-def writeup_official(team_id):
+def writeup_official(team_id, debug):
     """Get official team writeup"""
     try:
         api_client = HTBAPIClient()

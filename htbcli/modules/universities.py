@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 
 console = Console()
 
@@ -148,8 +149,10 @@ def list_universities(page, per_page, responses, option):
         console.print(f"[red]Error: {e}[/red]")
 
 @universities.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('university_id', type=int)
-def profile(university_id):
+def profile(university_id, debug):
     """Get university profile"""
     try:
         api_client = HTBAPIClient()
@@ -211,8 +214,10 @@ def rankings(page, per_page):
         console.print(f"[red]Error: {e}[/red]")
 
 @universities.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('university_id', type=int)
-def stats(university_id):
+def stats(university_id, debug):
     """Get university statistics"""
     try:
         api_client = HTBAPIClient()
@@ -233,8 +238,10 @@ def stats(university_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @universities.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('university_id', type=int)
-def members(university_id):
+def members(university_id, debug):
     """Get university members"""
     try:
         api_client = HTBAPIClient()
@@ -301,8 +308,10 @@ def new_list(page, per_page):
         console.print(f"[red]Error: {e}[/red]")
 
 @universities.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def user_stats(user_id):
+def user_stats(user_id, debug):
     """Get university owns statistics for a user"""
     try:
         api_client = HTBAPIClient()

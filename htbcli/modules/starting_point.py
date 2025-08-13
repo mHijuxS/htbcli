@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 
 console = Console()
 
@@ -85,8 +86,10 @@ def list_starting_point(page, per_page):
         console.print(f"[red]Error: {e}[/red]")
 
 @starting_point.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('starting_point_slug')
-def info(starting_point_slug):
+def info(starting_point_slug, debug):
     """Get starting point info by slug"""
     try:
         api_client = HTBAPIClient()
@@ -111,8 +114,10 @@ def info(starting_point_slug):
         console.print(f"[red]Error: {e}[/red]")
 
 @starting_point.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('starting_point_id', type=int)
-def activity(starting_point_id):
+def activity(starting_point_id, debug):
     """Get starting point activity"""
     try:
         api_client = HTBAPIClient()
@@ -143,8 +148,10 @@ def activity(starting_point_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @starting_point.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('starting_point_id', type=int)
-def writeup(starting_point_id):
+def writeup(starting_point_id, debug):
     """Get starting point writeup"""
     try:
         api_client = HTBAPIClient()

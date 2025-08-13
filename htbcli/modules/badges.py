@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 
 console = Console()
 
@@ -29,34 +30,35 @@ def badges():
     pass
 
 @badges.command()
-@click.option('--responses', is_flag=True, help='Show all available response fields')
-@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def list_badges():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+def list_badges(debug):
     """List all badges"""
     try:
         api_client = HTBAPIClient()
         badges_module = BadgesModule(api_client)
         result = badges_module.get_badges()
         
-        if result and 'data' in result:
-            badges_data = result['data']
+        if handle_debug_option(debug, result, "Debug: Badges API Response"):
+            return
+        
+        if result and 'categories' in result:
+            categories_data = result['categories']
             
-            table = Table(title="Badges")
-            table.add_column("ID", style="cyan")
-            table.add_column("Name", style="green")
-            table.add_column("Description", style="yellow")
-            table.add_column("Icon", style="magenta")
+            table = Table(title="Badge Categories")
+            table.add_column("Category", style="cyan")
+            table.add_column("Description", style="green")
+            table.add_column("Badge Count", style="yellow")
             
-            for badge in badges_data:
+            for category in categories_data:
+                badge_count = len(category.get('badges', []))
                 table.add_row(
-                    str(badge.get('id', 'N/A')),
-                    badge.get('name', 'N/A'),
-                    badge.get('description', 'N/A'),
-                    badge.get('icon', 'N/A')
+                    category.get('name', 'N/A'),
+                    category.get('description', 'N/A'),
+                    str(badge_count)
                 )
             
             console.print(table)
         else:
-            console.print("[yellow]No badges found[/yellow]")
+            console.print("[yellow]No badge categories found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")

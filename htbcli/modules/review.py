@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 
 console = Console()
 
@@ -33,8 +34,10 @@ def review():
     pass
 
 @review.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('review_id', type=int)
-def helpful(review_id):
+def helpful(review_id, debug):
     """Mark review as helpful"""
     try:
         api_client = HTBAPIClient()
@@ -55,8 +58,10 @@ def helpful(review_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @review.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('review_id', type=int)
-def unhelpful(review_id):
+def unhelpful(review_id, debug):
     """Mark review as unhelpful"""
     try:
         api_client = HTBAPIClient()

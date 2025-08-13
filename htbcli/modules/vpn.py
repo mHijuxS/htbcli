@@ -13,6 +13,7 @@ from rich.panel import Panel
 from pathlib import Path
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 
 console = Console()
 

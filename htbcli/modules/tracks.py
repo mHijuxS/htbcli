@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 
 console = Console()
 
@@ -85,8 +86,10 @@ def list_tracks(page, per_page):
         console.print(f"[red]Error: {e}[/red]")
 
 @tracks.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('track_slug')
-def info(track_slug):
+def info(track_slug, debug):
     """Get track info by slug"""
     try:
         api_client = HTBAPIClient()
@@ -111,8 +114,10 @@ def info(track_slug):
         console.print(f"[red]Error: {e}[/red]")
 
 @tracks.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('track_id', type=int)
-def activity(track_id):
+def activity(track_id, debug):
     """Get track activity"""
     try:
         api_client = HTBAPIClient()
@@ -143,8 +148,10 @@ def activity(track_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @tracks.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('track_id', type=int)
-def writeup(track_id):
+def writeup(track_id, debug):
     """Get track writeup"""
     try:
         api_client = HTBAPIClient()

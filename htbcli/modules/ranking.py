@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 
 console = Console()
 
@@ -153,8 +154,10 @@ def list_ranking(page, per_page):
         console.print(f"[red]Error: {e}[/red]")
 
 @ranking.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('ranking_slug')
-def info(ranking_slug):
+def info(ranking_slug, debug):
     """Get ranking info by slug"""
     try:
         api_client = HTBAPIClient()
@@ -180,7 +183,9 @@ def info(ranking_slug):
         console.print(f"[red]Error: {e}[/red]")
 
 @ranking.command()
-def recommended():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def recommended(debug):
     """Get recommended rankings"""
     try:
         api_client = HTBAPIClient()
@@ -211,8 +216,10 @@ def recommended():
         console.print(f"[red]Error: {e}[/red]")
 
 @ranking.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('ranking_id', type=int)
-def activity(ranking_id):
+def activity(ranking_id, debug):
     """Get ranking activity"""
     try:
         api_client = HTBAPIClient()
@@ -243,8 +250,10 @@ def activity(ranking_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @ranking.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('ranking_id', type=int)
-def changelog(ranking_id):
+def changelog(ranking_id, debug):
     """Get ranking changelog"""
     try:
         api_client = HTBAPIClient()
@@ -273,8 +282,10 @@ def changelog(ranking_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @ranking.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('ranking_id', type=int)
-def writeup(ranking_id):
+def writeup(ranking_id, debug):
     """Get ranking writeup"""
     try:
         api_client = HTBAPIClient()
@@ -297,8 +308,10 @@ def writeup(ranking_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @ranking.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('ranking_id', type=int)
-def writeup_official(ranking_id):
+def writeup_official(ranking_id, debug):
     """Get official ranking writeup"""
     try:
         api_client = HTBAPIClient()

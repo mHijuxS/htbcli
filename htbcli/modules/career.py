@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 
 console = Console()
 
@@ -109,8 +110,10 @@ def list_career(page, per_page):
         console.print(f"[red]Error: {e}[/red]")
 
 @career.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('career_slug')
-def info(career_slug):
+def info(career_slug, debug):
     """Get career info by slug"""
     try:
         api_client = HTBAPIClient()
@@ -135,7 +138,9 @@ def info(career_slug):
         console.print(f"[red]Error: {e}[/red]")
 
 @career.command()
-def recommended():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def recommended(debug):
     """Get recommended careers"""
     try:
         api_client = HTBAPIClient()
@@ -166,8 +171,10 @@ def recommended():
         console.print(f"[red]Error: {e}[/red]")
 
 @career.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('career_id', type=int)
-def activity(career_id):
+def activity(career_id, debug):
     """Get career activity"""
     try:
         api_client = HTBAPIClient()
@@ -198,8 +205,10 @@ def activity(career_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @career.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('career_id', type=int)
-def changelog(career_id):
+def changelog(career_id, debug):
     """Get career changelog"""
     try:
         api_client = HTBAPIClient()
@@ -228,8 +237,10 @@ def changelog(career_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @career.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('career_id', type=int)
-def writeup(career_id):
+def writeup(career_id, debug):
     """Get career writeup"""
     try:
         api_client = HTBAPIClient()
@@ -252,8 +263,10 @@ def writeup(career_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @career.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('career_id', type=int)
-def writeup_official(career_id):
+def writeup_official(career_id, debug):
     """Get official career writeup"""
     try:
         api_client = HTBAPIClient()

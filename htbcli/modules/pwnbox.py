@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 
 console = Console()
 
@@ -41,7 +42,9 @@ def pwnbox():
     pass
 
 @pwnbox.command()
-def info():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def info(debug):
     """Get PwnBox info"""
     try:
         api_client = HTBAPIClient()
@@ -99,7 +102,9 @@ def list_pwnbox():
         console.print(f"[red]Error: {e}[/red]")
 
 @pwnbox.command()
-def terminals():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def terminals(debug):
     """Get PwnBox terminals"""
     try:
         api_client = HTBAPIClient()
@@ -132,7 +137,9 @@ def terminals():
         console.print(f"[red]Error: {e}[/red]")
 
 @pwnbox.command()
-def terminals_list():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def terminals_list(debug):
     """Get PwnBox terminals list"""
     try:
         api_client = HTBAPIClient()

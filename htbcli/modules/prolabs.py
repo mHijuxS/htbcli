@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 
 console = Console()
 
@@ -129,8 +130,10 @@ def list_prolabs(page, per_page):
         console.print(f"[red]Error: {e}[/red]")
 
 @prolabs.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('prolab_slug')
-def info(prolab_slug):
+def info(prolab_slug, debug):
     """Get prolab info by slug"""
     try:
         api_client = HTBAPIClient()
@@ -155,7 +158,9 @@ def info(prolab_slug):
         console.print(f"[red]Error: {e}[/red]")
 
 @prolabs.command()
-def recommended():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def recommended(debug):
     """Get recommended prolabs"""
     try:
         api_client = HTBAPIClient()
@@ -186,8 +191,10 @@ def recommended():
         console.print(f"[red]Error: {e}[/red]")
 
 @prolabs.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('prolab_id', type=int)
-def activity(prolab_id):
+def activity(prolab_id, debug):
     """Get prolab activity"""
     try:
         api_client = HTBAPIClient()
@@ -218,8 +225,10 @@ def activity(prolab_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @prolabs.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('prolab_id', type=int)
-def changelog(prolab_id):
+def changelog(prolab_id, debug):
     """Get prolab changelog"""
     try:
         api_client = HTBAPIClient()
@@ -248,8 +257,10 @@ def changelog(prolab_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @prolabs.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('prolab_id', type=int)
-def writeup(prolab_id):
+def writeup(prolab_id, debug):
     """Get prolab writeup"""
     try:
         api_client = HTBAPIClient()
@@ -272,8 +283,10 @@ def writeup(prolab_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @prolabs.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('prolab_id', type=int)
-def writeup_official(prolab_id):
+def writeup_official(prolab_id, debug):
     """Get official prolab writeup"""
     try:
         api_client = HTBAPIClient()

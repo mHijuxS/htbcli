@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 
 console = Console()
 
@@ -134,9 +135,11 @@ def info(fortress_id, responses, option):
         console.print(f"[red]Error: {e}[/red]")
 
 @fortresses.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('fortress_id', type=int)
 @click.argument('flag')
-def submit_flag(fortress_id, flag):
+def submit_flag(fortress_id, flag, debug):
     """Submit flag for fortress"""
     try:
         api_client = HTBAPIClient()
@@ -157,8 +160,10 @@ def submit_flag(fortress_id, flag):
         console.print(f"[red]Error: {e}[/red]")
 
 @fortresses.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('fortress_id', type=int)
-def flags(fortress_id):
+def flags(fortress_id, debug):
     """Get list of flags for fortress"""
     try:
         api_client = HTBAPIClient()
@@ -189,8 +194,10 @@ def flags(fortress_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @fortresses.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('fortress_id', type=int)
-def reset(fortress_id):
+def reset(fortress_id, debug):
     """Vote reset fortress"""
     try:
         api_client = HTBAPIClient()

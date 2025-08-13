@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 
 console = Console()
 
@@ -145,70 +146,54 @@ def user():
     pass
 
 @user.command()
-@click.option('--responses', is_flag=True, help='Show all available response fields')
-@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def info(responses, option):
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+def info(debug):
     """Get user information"""
     try:
         api_client = HTBAPIClient()
         user_module = UserModule(api_client)
         result = user_module.get_user_info()
         
+        if handle_debug_option(debug, result, "Debug: User Info API Response"):
+            return
+        
         if result and 'info' in result:
             info = result['info']
             
-            if responses:
-                # Show all available fields
-                console.print(Panel.fit(
-                    f"[bold green]All Available Fields for User Info[/bold green]\n"
-                    f"{chr(10).join([f'{k}: {v}' for k, v in info.items()])}",
-                    title="User Info - All Fields"
-                ))
-            elif option:
-                # Show only specified fields
-                selected_info = {}
-                for field in option:
-                    if field in info:
-                        selected_info[field] = info[field]
-                    else:
-                        console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
-                
-                if selected_info:
-                    console.print(Panel.fit(
-                        f"[bold green]Selected Fields[/bold green]\n"
-                        f"{chr(10).join([f'{k}: {v}' for k, v in selected_info.items()])}",
-                        title="User Info - Selected Fields"
-                    ))
-            else:
-                # Default view with enhanced information
-                team_name = info.get('team', {}).get('name', 'N/A') if info.get('team') else 'N/A'
-                console.print(Panel.fit(
-                    f"[bold green]User Information[/bold green]\n"
-                    f"Username: {info.get('name', 'N/A') or 'N/A'}\n"
-                    f"Email: {info.get('email', 'N/A') or 'N/A'}\n"
-                    f"Rank ID: {info.get('rank_id', 'N/A') or 'N/A'}\n"
-                    f"Team: {team_name}\n"
-                    f"VIP: {'Yes' if info.get('isVip') else 'No'}\n"
-                    f"Subscription: {info.get('subscriptionType', 'N/A') or 'N/A'}\n"
-                    f"Verified: {'Yes' if info.get('verified') else 'No'}\n"
-                    f"Timezone: {info.get('timezone', 'N/A') or 'N/A'}\n"
-                    f"Server ID: {info.get('server_id', 'N/A') or 'N/A'}\n"
-                    f"Beta Tester: {'Yes' if info.get('beta_tester') else 'No'}",
-                    title="User Info"
-                ))
+            # Default view with enhanced information
+            team_name = info.get('team', {}).get('name', 'N/A') if info.get('team') else 'N/A'
+            console.print(Panel.fit(
+                f"[bold green]User Information[/bold green]\n"
+                f"Username: {info.get('name', 'N/A') or 'N/A'}\n"
+                f"Email: {info.get('email', 'N/A') or 'N/A'}\n"
+                f"Rank ID: {info.get('rank_id', 'N/A') or 'N/A'}\n"
+                f"Team: {team_name}\n"
+                f"VIP: {'Yes' if info.get('isVip') else 'No'}\n"
+                f"Subscription: {info.get('subscriptionType', 'N/A') or 'N/A'}\n"
+                f"Verified: {'Yes' if info.get('verified') else 'No'}\n"
+                f"Timezone: {info.get('timezone', 'N/A') or 'N/A'}\n"
+                f"Server ID: {info.get('server_id', 'N/A') or 'N/A'}\n"
+                f"Beta Tester: {'Yes' if info.get('beta_tester') else 'No'}",
+                title="User Info"
+            ))
         else:
             console.print("[yellow]No user info found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def profile(user_id):
+def profile(user_id, debug):
     """Get user profile"""
     try:
         api_client = HTBAPIClient()
         user_module = UserModule(api_client)
         result = user_module.get_user_profile_basic(user_id)
+        
+        if handle_debug_option(debug, result, f"Debug: User Profile API Response (ID: {user_id})"):
+            return
         
         if result and 'profile' in result:
             profile = result['profile']
@@ -228,13 +213,18 @@ def profile(user_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def activity(user_id):
+def activity(user_id, debug):
     """Get user activity"""
     try:
         api_client = HTBAPIClient()
         user_module = UserModule(api_client)
         result = user_module.get_user_profile_activity(user_id)
+        
+        if handle_debug_option(debug, result, f"Debug: User Activity API Response (ID: {user_id})"):
+            return
         
         if result and 'data' in result:
             activity_data = result['data']
@@ -260,8 +250,10 @@ def activity(user_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def badges(user_id):
+def badges(user_id, debug):
     """Get user badges"""
     try:
         api_client = HTBAPIClient()
@@ -292,8 +284,10 @@ def badges(user_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def bloods(user_id):
+def bloods(user_id, debug):
     """Get user bloods"""
     try:
         api_client = HTBAPIClient()
@@ -560,8 +554,10 @@ def tracks(responses, option):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def follow(user_id):
+def follow(user_id, debug):
     """Follow a user"""
     try:
         api_client = HTBAPIClient()
@@ -581,8 +577,10 @@ def follow(user_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def unfollow(user_id):
+def unfollow(user_id, debug):
     """Unfollow a user"""
     try:
         api_client = HTBAPIClient()
@@ -602,8 +600,10 @@ def unfollow(user_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def respect(user_id):
+def respect(user_id, debug):
     """Respect a user"""
     try:
         api_client = HTBAPIClient()
@@ -623,8 +623,10 @@ def respect(user_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def disrespect(user_id):
+def disrespect(user_id, debug):
     """Disrespect a user"""
     try:
         api_client = HTBAPIClient()
@@ -644,10 +646,12 @@ def disrespect(user_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('target_type')
 @click.argument('user_id', type=int)
 @click.argument('target_id', type=int)
-def achievement(target_type, user_id, target_id):
+def achievement(target_type, user_id, target_id, debug):
     """Validate achievement/own"""
     try:
         api_client = HTBAPIClient()
@@ -669,7 +673,9 @@ def achievement(target_type, user_id, target_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
-def anonymized_id():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def anonymized_id(debug):
     """Get user's anonymous ID"""
     try:
         api_client = HTBAPIClient()
@@ -746,7 +752,9 @@ def apptoken_list(responses, option):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
-def banned():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def banned(debug):
     """Check if user is banned"""
     try:
         api_client = HTBAPIClient()
@@ -765,7 +773,9 @@ def banned():
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
-def connection_status():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def connection_status(debug):
     """Get user connection status"""
     try:
         api_client = HTBAPIClient()
@@ -784,7 +794,9 @@ def connection_status():
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
-def dashboard_tabloid():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def dashboard_tabloid(debug):
     """Get user dashboard tabloid"""
     try:
         api_client = HTBAPIClient()
@@ -803,8 +815,10 @@ def dashboard_tabloid():
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def chart_machines_attack(user_id):
+def chart_machines_attack(user_id, debug):
     """Get user profile machine attack chart"""
     try:
         api_client = HTBAPIClient()
@@ -824,8 +838,10 @@ def chart_machines_attack(user_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def content(user_id):
+def content(user_id, debug):
     """Get user profile content"""
     try:
         api_client = HTBAPIClient()
@@ -894,9 +910,11 @@ def content(user_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('period')
 @click.argument('user_id', type=int)
-def graph(period, user_id):
+def graph(period, user_id, debug):
     """Get user profile graph"""
     try:
         api_client = HTBAPIClient()
@@ -917,8 +935,10 @@ def graph(period, user_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def progress_challenges(user_id):
+def progress_challenges(user_id, debug):
     """Get user profile progress challenges"""
     try:
         api_client = HTBAPIClient()
@@ -947,8 +967,10 @@ def progress_challenges(user_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def progress_fortress(user_id):
+def progress_fortress(user_id, debug):
     """Get user profile progress fortress"""
     try:
         api_client = HTBAPIClient()
@@ -977,8 +999,10 @@ def progress_fortress(user_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def progress_machines_os(user_id):
+def progress_machines_os(user_id, debug):
     """Get user profile progress machines OS"""
     try:
         api_client = HTBAPIClient()
@@ -1007,8 +1031,10 @@ def progress_machines_os(user_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def progress_prolab(user_id):
+def progress_prolab(user_id, debug):
     """Get user profile progress prolab"""
     try:
         api_client = HTBAPIClient()
@@ -1037,8 +1063,10 @@ def progress_prolab(user_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @user.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('user_id', type=int)
-def progress_sherlocks(user_id):
+def progress_sherlocks(user_id, debug):
     """Get user profile progress sherlocks"""
     try:
         api_client = HTBAPIClient()

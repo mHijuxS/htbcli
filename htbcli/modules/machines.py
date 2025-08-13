@@ -10,6 +10,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 from .vpn import VPNModule
 
 console = Console()
@@ -275,62 +276,37 @@ def machines():
     pass
 
 @machines.command()
-@click.option('--responses', is_flag=True, help='Show all available response fields')
-@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def active(responses, option):
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+def active(debug):
     """Get currently active machine and VM status"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
         result = machines_module.get_vm_status()
         
+        if handle_debug_option(debug, result, "Debug: Active Machine API Response"):
+            return
+        
         if result and result.get('info'):
             info = result['info']
             
-            if responses:
-                # Show all available fields
-                console.print(Panel.fit(
-                    f"[bold green]All Available Fields for Active Machine[/bold green]\n"
-                    f"{chr(10).join([f'{k}: {v}' for k, v in info.items()])}",
-                    title="Active Machine - All Fields"
-                ))
-            elif option:
-                # Show only specified fields
-                selected_info = {}
-                for field in option:
-                    if field in info:
-                        value = info[field]
-                        # Special handling for VPN server ID to show name
-                        if field == 'vpn_server_id':
-                            value = machines_module.vpn_module.resolve_vpn_server_name(value)
-                        selected_info[field] = value
-                    else:
-                        console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
-                
-                if selected_info:
-                    console.print(Panel.fit(
-                        f"[bold green]Selected Fields[/bold green]\n"
-                        f"{chr(10).join([f'{k}: {v}' for k, v in selected_info.items()])}",
-                        title="Active Machine - Selected Fields"
-                    ))
-            else:
-                # Default view
-                console.print(Panel.fit(
-                    f"[bold green]Active Machine & VM Status[/bold green]\n"
-                    f"Machine ID: {info.get('id', 'N/A')}\n"
-                    f"Name: {info.get('name', 'N/A')}\n"
-                    f"Type: {info.get('type', 'N/A')}\n"
-                    f"IP Address: {info.get('ip', 'N/A')}\n"
-                    f"Lab Server: {info.get('lab_server', 'N/A')}\n"
-                    f"VPN Server: {machines_module.vpn_module.resolve_vpn_server_name(info.get('vpn_server_id'))}\n"
-                    f"Expires At: {info.get('expires_at', 'N/A')}\n"
-                    f"Is Spawning: {info.get('isSpawning', 'N/A')}\n"
-                    f"Tier ID: {info.get('tier_id', 'N/A')}\n"
-                    f"Voted: {info.get('voted', 'N/A')}\n"
-                    f"Voting: {info.get('voting', 'N/A')}\n"
-                    f"Info Status: {info.get('info_status', 'N/A')}",
-                    title="Active Machine & VM Status"
-                ))
+            # Default view
+            console.print(Panel.fit(
+                f"[bold green]Active Machine & VM Status[/bold green]\n"
+                f"Machine ID: {info.get('id', 'N/A')}\n"
+                f"Name: {info.get('name', 'N/A')}\n"
+                f"Type: {info.get('type', 'N/A')}\n"
+                f"IP Address: {info.get('ip', 'N/A')}\n"
+                f"Lab Server: {info.get('lab_server', 'N/A')}\n"
+                f"VPN Server: {machines_module.vpn_module.resolve_vpn_server_name(info.get('vpn_server_id'))}\n"
+                f"Expires At: {info.get('expires_at', 'N/A')}\n"
+                f"Is Spawning: {info.get('isSpawning', 'N/A')}\n"
+                f"Tier ID: {info.get('tier_id', 'N/A')}\n"
+                f"Voted: {info.get('voted', 'N/A')}\n"
+                f"Voting: {info.get('voting', 'N/A')}\n"
+                f"Info Status: {info.get('info_status', 'N/A')}",
+                title="Active Machine & VM Status"
+            ))
         else:
             console.print("[yellow]No active machine found[/yellow]")
     except Exception as e:
@@ -339,8 +315,10 @@ def active(responses, option):
 
 
 @machines.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('machine_identifier')
-def activity(machine_identifier):
+def activity(machine_identifier, debug):
     """Get machine activity (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -378,8 +356,10 @@ def activity(machine_identifier):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('machine_identifier')
-def changelog(machine_identifier):
+def changelog(machine_identifier, debug):
     """Get machine changelog (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -421,8 +401,10 @@ def changelog(machine_identifier):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('machine_identifier')
-def creators(machine_identifier):
+def creators(machine_identifier, debug):
     """Get machine creators (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -626,9 +608,11 @@ def profile(machine_slug, responses, option):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('machine_identifier', required=False)
 @click.argument('flag', required=False)
-def submit(machine_identifier, flag):
+def submit(machine_identifier, flag, debug):
     """Submit flag for machine. Uses active machine if no machine specified. Flag can be provided as argument or piped from stdin."""
     try:
         api_client = HTBAPIClient()
@@ -682,12 +666,17 @@ def submit(machine_identifier, flag):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-def recommended():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def recommended(debug):
     """Get recommended machines"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
         result = machines_module.get_machine_recommended()
+        
+        if handle_debug_option(debug, result, "Debug: Recommended Machines API Response"):
+            return
         
         if result:
             # Handle card1 and card2 structure
@@ -721,7 +710,9 @@ def recommended():
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-def tags():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def tags(debug):
     """Get machine tags list"""
     try:
         api_client = HTBAPIClient()
@@ -750,12 +741,21 @@ def tags():
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-def unreleased():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+def unreleased(debug):
     """Get unreleased machines"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
         result = machines_module.get_machine_unreleased()
+        
+        if debug:
+            console.print(Panel.fit(
+                f"[bold green]Raw API Response[/bold green]\n"
+                f"{result}",
+                title="Debug: Unreleased Machines API Response"
+            ))
+            return
         
         if result and 'data' in result:
             unreleased_data = result['data']
@@ -765,13 +765,35 @@ def unreleased():
             table.add_column("OS", style="green")
             table.add_column("Difficulty", style="yellow")
             table.add_column("Release Date", style="magenta")
+            table.add_column("Creators", style="blue")
             
             for machine in unreleased_data:
+                # Use correct field names from API specification
+                difficulty = machine.get('difficulty_text', 'N/A') or 'N/A'
+                release_date = machine.get('release', 'N/A') or 'N/A'
+                
+                # Handle creators information
+                creators = []
+                first_creator = machine.get('firstCreator')
+                if first_creator and isinstance(first_creator, list) and len(first_creator) > 0:
+                    creators.append(first_creator[0].get('name', 'Unknown'))
+                elif first_creator and isinstance(first_creator, dict):
+                    creators.append(first_creator.get('name', 'Unknown'))
+                
+                co_creators = machine.get('coCreators')
+                if co_creators and isinstance(co_creators, list):
+                    for co_creator in co_creators:
+                        if isinstance(co_creator, dict):
+                            creators.append(co_creator.get('name', 'Unknown'))
+                
+                creators_str = ', '.join(creators) if creators else 'N/A'
+                
                 table.add_row(
                     str(machine.get('name', 'N/A') or 'N/A'),
                     str(machine.get('os', 'N/A') or 'N/A'),
-                    str(machine.get('difficulty', 'N/A') or 'N/A'),
-                    str(machine.get('release_date', 'N/A') or 'N/A')
+                    str(difficulty),
+                    str(release_date),
+                    creators_str
                 )
             
             console.print(table)
@@ -811,8 +833,10 @@ def graph_activity(machine_identifier, period):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('machine_identifier')
-def graph_matrix(machine_identifier):
+def graph_matrix(machine_identifier, debug):
     """Get machine graph matrix (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -839,8 +863,10 @@ def graph_matrix(machine_identifier):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('machine_identifier')
-def graph_difficulty(machine_identifier):
+def graph_difficulty(machine_identifier, debug):
     """Get machine graph difficulty (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -902,8 +928,10 @@ def retired_list(page, per_page):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('machine_identifier')
-def owns_top(machine_identifier):
+def owns_top(machine_identifier, debug):
     """Get top 25 owners for a machine (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -943,7 +971,9 @@ def owns_top(machine_identifier):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-def recommended_retired():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def recommended_retired(debug):
     """Get recommended retired machines"""
     try:
         api_client = HTBAPIClient()
@@ -976,8 +1006,10 @@ def recommended_retired():
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('machine_identifier')
-def reviews(machine_identifier):
+def reviews(machine_identifier, debug):
     """Get machine reviews (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -1015,8 +1047,10 @@ def reviews(machine_identifier):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('machine_identifier')
-def reviews_user(machine_identifier):
+def reviews_user(machine_identifier, debug):
     """Get user's review for machine (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -1047,8 +1081,10 @@ def reviews_user(machine_identifier):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('machine_identifier')
-def machine_tags(machine_identifier):
+def machine_tags(machine_identifier, debug):
     """Get machine tags (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -1119,7 +1155,9 @@ def todo_list(page, per_page):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-def walkthrough_random():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def walkthrough_random(debug):
     """Get random walkthrough"""
     try:
         api_client = HTBAPIClient()
@@ -1138,7 +1176,9 @@ def walkthrough_random():
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-def walkthrough_languages():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def walkthrough_languages(debug):
     """Get walkthrough language options"""
     try:
         api_client = HTBAPIClient()
@@ -1165,7 +1205,9 @@ def walkthrough_languages():
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
-def walkthrough_feedback_choices():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def walkthrough_feedback_choices(debug):
     """Get walkthrough feedback choices"""
     try:
         api_client = HTBAPIClient()
@@ -1192,8 +1234,10 @@ def walkthrough_feedback_choices():
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('machine_identifier')
-def walkthroughs(machine_identifier):
+def walkthroughs(machine_identifier, debug):
     """Get machine walkthroughs (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -1231,8 +1275,10 @@ def walkthroughs(machine_identifier):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('machine_identifier')
-def writeup(machine_identifier):
+def writeup(machine_identifier, debug):
     """Get machine writeup (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -1259,8 +1305,10 @@ def writeup(machine_identifier):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('machine_identifier')
-def adventure(machine_identifier):
+def adventure(machine_identifier, debug):
     """Get machine adventure (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
@@ -1287,8 +1335,10 @@ def adventure(machine_identifier):
         console.print(f"[red]Error: {e}[/red]")
 
 @machines.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('machine_identifier')
-def tasks(machine_identifier):
+def tasks(machine_identifier, debug):
     """Get machine tasks (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()

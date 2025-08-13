@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 
 console = Console()
 
@@ -248,8 +249,10 @@ def info(challenge_slug, responses, option):
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('flag')
-def submit(flag):
+def submit(flag, debug):
     """Submit flag for challenge"""
     try:
         api_client = HTBAPIClient()
@@ -618,8 +621,10 @@ def download(challenge_id, output):
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('challenge_id', type=int)
-def start(challenge_id):
+def start(challenge_id, debug):
     """Start a challenge"""
     try:
         api_client = HTBAPIClient()
@@ -640,8 +645,10 @@ def start(challenge_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('challenge_id', type=int)
-def stop(challenge_id):
+def stop(challenge_id, debug):
     """Stop a challenge"""
     try:
         api_client = HTBAPIClient()
@@ -662,8 +669,10 @@ def stop(challenge_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('challenge_id', type=int)
-def writeup(challenge_id):
+def writeup(challenge_id, debug):
     """Get challenge writeup"""
     try:
         api_client = HTBAPIClient()
@@ -719,8 +728,10 @@ def writeup_official(challenge_id, output):
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('review_id', type=int)
-def mark_helpful(review_id):
+def mark_helpful(review_id, debug):
     """Mark review as helpful"""
     try:
         api_client = HTBAPIClient()
@@ -741,8 +752,10 @@ def mark_helpful(review_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('challenge_id', type=int)
-def reviews_user(challenge_id):
+def reviews_user(challenge_id, debug):
     """Get user's review for challenge"""
     try:
         api_client = HTBAPIClient()

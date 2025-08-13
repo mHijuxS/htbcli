@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
+from ..base_command import handle_debug_option
 
 console = Console()
 
@@ -61,7 +62,9 @@ def connection():
     pass
 
 @connection.command()
-def status():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def status(debug):
     """Get current active connections"""
     try:
         api_client = HTBAPIClient()
@@ -84,7 +87,9 @@ def status():
         console.print(f"[red]Error: {e}[/red]")
 
 @connection.command()
-def servers():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def servers(debug):
     """Get list of VPN servers"""
     try:
         api_client = HTBAPIClient()
@@ -117,7 +122,9 @@ def servers():
         console.print(f"[red]Error: {e}[/red]")
 
 @connection.command()
-def connections():
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
+def connections(debug):
     """Get last set connections"""
     try:
         api_client = HTBAPIClient()
@@ -162,8 +169,10 @@ def connections():
         console.print(f"[red]Error: {e}[/red]")
 
 @connection.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('vpn_id', type=int)
-def download_udp(vpn_id):
+def download_udp(vpn_id, debug):
     """Download UDP VPN config"""
     try:
         api_client = HTBAPIClient()
@@ -184,8 +193,10 @@ def download_udp(vpn_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @connection.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('vpn_id', type=int)
-def download_tcp(vpn_id):
+def download_tcp(vpn_id, debug):
     """Download TCP VPN config"""
     try:
         api_client = HTBAPIClient()
@@ -206,8 +217,10 @@ def download_tcp(vpn_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @connection.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('vpn_id', type=int)
-def switch(vpn_id):
+def switch(vpn_id, debug):
     """Switch VPN server"""
     try:
         api_client = HTBAPIClient()
@@ -228,8 +241,10 @@ def switch(vpn_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @connection.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('prolab_id', type=int)
-def prolab_status(prolab_id):
+def prolab_status(prolab_id, debug):
     """Get VPN server status for prolab"""
     try:
         api_client = HTBAPIClient()
@@ -252,8 +267,10 @@ def prolab_status(prolab_id):
         console.print(f"[red]Error: {e}[/red]")
 
 @connection.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('product_name')
-def product_status(product_name):
+def product_status(product_name, debug):
     """Get VPN server status for product"""
     try:
         api_client = HTBAPIClient()
@@ -276,8 +293,10 @@ def product_status(product_name):
         console.print(f"[red]Error: {e}[/red]")
 
 @connection.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+
 @click.argument('prolab_id', type=int)
-def prolab_servers(prolab_id):
+def prolab_servers(prolab_id, debug):
     """Get prolab VPN servers"""
     try:
         api_client = HTBAPIClient()
