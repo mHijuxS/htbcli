@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
+from rich.text import Text
 
 from ..api_client import HTBAPIClient
 from ..base_command import handle_debug_option
@@ -19,21 +20,21 @@ class PwnBoxModule:
     def __init__(self, api_client: HTBAPIClient):
         self.api = api_client
     
-    def get_pwnbox_info(self) -> Dict[str, Any]:
-        """Get PwnBox info"""
-        return self.api.get("/pwnbox/info")
+    def start_pwnbox(self, location: str) -> Dict[str, Any]:
+        """Start a PwnBox instance"""
+        return self.api.post("/pwnbox/start", json_data={"location": location})
     
-    def get_pwnbox_list(self) -> Dict[str, Any]:
-        """Get PwnBox list"""
-        return self.api.get("/pwnbox/list")
+    def get_pwnbox_status(self) -> Dict[str, Any]:
+        """Get PwnBox status"""
+        return self.api.get("/pwnbox/status")
     
-    def get_pwnbox_terminals(self) -> Dict[str, Any]:
-        """Get PwnBox terminals"""
-        return self.api.get("/pwnbox/terminals")
+    def terminate_pwnbox(self) -> Dict[str, Any]:
+        """Terminate a PwnBox instance"""
+        return self.api.post("/pwnbox/terminate")
     
-    def get_pwnbox_terminals_list(self) -> Dict[str, Any]:
-        """Get PwnBox terminals list"""
-        return self.api.get("/pwnbox/terminals/list")
+    def get_pwnbox_usage(self) -> Dict[str, Any]:
+        """Get PwnBox usage statistics"""
+        return self.api.get("/pwnbox/usage")
 
 # Click commands
 @click.group()
@@ -42,134 +43,133 @@ def pwnbox():
     pass
 
 @pwnbox.command()
+@click.option('--location', '-l', 
+              type=click.Choice(['us-east', 'us-west', 'uk', 'ca', 'in', 'de', 'au']),
+              default='us-east',
+              help='PwnBox location')
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
-
-def info(debug, json_output):
-    """Get PwnBox info"""
+def start(location, debug, json_output):
+    """Start a PwnBox instance"""
     try:
         api_client = HTBAPIClient()
         pwnbox_module = PwnBoxModule(api_client)
-        result = pwnbox_module.get_pwnbox_info()
+        result = pwnbox_module.start_pwnbox(location)
+        
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: PwnBox Start", json_output)
+            return
         
         if result and 'data' in result:
-            info_data = result['data']
+            data = result['data']
             console.print(Panel.fit(
-                f"[bold green]PwnBox Info[/bold green]\n"
-                f"Status: {info_data.get('status', 'N/A') or 'N/A'}\n"
-                f"Version: {info_data.get('version', 'N/A') or 'N/A'}\n"
-                f"Region: {info_data.get('region', 'N/A') or 'N/A'}\n"
-                f"IP: {info_data.get('ip', 'N/A') or 'N/A'}",
-                title="PwnBox Info"
+                f"[bold green]PwnBox Started Successfully[/bold green]\n"
+                f"ID: {data.get('id', 'N/A')}\n"
+                f"Hostname: {data.get('hostname', 'N/A')}\n"
+                f"Status: {data.get('status', 'N/A')}\n"
+                f"Location: {data.get('location', 'N/A')}\n"
+                f"Proxy URL: {data.get('proxy_url', 'N/A')}\n"
+                f"Created: {data.get('created_at', 'N/A')}\n"
+                f"Expires: {data.get('expires_at', 'N/A')}\n"
+                f"Life Remaining: {data.get('life_remaining', 'N/A')} minutes",
+                title="PwnBox Started"
             ))
         else:
-            console.print("[yellow]No PwnBox info found[/yellow]")
-    except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
-
-@pwnbox.command()
-@click.option('--responses', is_flag=True, help='Show all available response fields')
-@click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def list_pwnbox():
-    """Get PwnBox list"""
-    try:
-        api_client = HTBAPIClient()
-        pwnbox_module = PwnBoxModule(api_client)
-        result = pwnbox_module.get_pwnbox_list()
-        
-        if result and 'data' in result:
-            list_data = result['data']
-            
-            table = Table(title="PwnBox List")
-            table.add_column("ID", style="cyan")
-            table.add_column("Name", style="green")
-            table.add_column("Status", style="yellow")
-            table.add_column("Region", style="magenta")
-            table.add_column("IP", style="blue")
-            
-            for pwnbox in list_data:
-                table.add_row(
-                    str(pwnbox.get('id', 'N/A') or 'N/A'),
-                    str(pwnbox.get('name', 'N/A') or 'N/A'),
-                    str(pwnbox.get('status', 'N/A') or 'N/A'),
-                    str(pwnbox.get('region', 'N/A') or 'N/A'),
-                    str(pwnbox.get('ip', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
-        else:
-            console.print("[yellow]No PwnBox list found[/yellow]")
+            console.print("[yellow]Failed to start PwnBox[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @pwnbox.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
-
-def terminals(debug, json_output):
-    """Get PwnBox terminals"""
+def status(debug, json_output):
+    """Get PwnBox status"""
     try:
         api_client = HTBAPIClient()
         pwnbox_module = PwnBoxModule(api_client)
-        result = pwnbox_module.get_pwnbox_terminals()
+        result = pwnbox_module.get_pwnbox_status()
+        
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: PwnBox Status", json_output)
+            return
         
         if result and 'data' in result:
-            terminals_data = result['data']
-            
-            table = Table(title="PwnBox Terminals")
-            table.add_column("ID", style="cyan")
-            table.add_column("Name", style="green")
-            table.add_column("Status", style="yellow")
-            table.add_column("Type", style="magenta")
-            table.add_column("Created", style="blue")
-            
-            for terminal in terminals_data:
-                table.add_row(
-                    str(terminal.get('id', 'N/A') or 'N/A'),
-                    str(terminal.get('name', 'N/A') or 'N/A'),
-                    str(terminal.get('status', 'N/A') or 'N/A'),
-                    str(terminal.get('type', 'N/A') or 'N/A'),
-                    str(terminal.get('created_at', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+            data = result['data']
+            console.print(Panel.fit(
+                f"[bold green]PwnBox Status[/bold green]\n"
+                f"ID: {data.get('id', 'N/A')}\n"
+                f"Hostname: {data.get('hostname', 'N/A')}\n"
+                f"Status: {data.get('status', 'N/A')}\n"
+                f"Location: {data.get('location', 'N/A')}\n"
+                f"Proxy URL: {data.get('proxy_url', 'N/A')}\n"
+                f"Username: {data.get('username', 'N/A')}\n"
+                f"VNC Password: {data.get('vnc_password', 'N/A')}\n"
+                f"VNC View Only Password: {data.get('vnc_view_only_password', 'N/A')}\n"
+                f"Spectate URL: {data.get('spectate_url', 'N/A')}\n"
+                f"Created: {data.get('created_at', 'N/A')}\n"
+                f"Expires: {data.get('expires_at', 'N/A')}\n"
+                f"Life Remaining: {data.get('life_remaining', 'N/A')} minutes\n"
+                f"Is Ready: {data.get('is_ready', 'N/A')}",
+                title="PwnBox Status"
+            ))
+        elif result and 'message' in result:
+            console.print(Panel.fit(
+                f"[yellow]PwnBox Status[/yellow]\n"
+                f"Message: {result['message']}",
+                title="PwnBox Status"
+            ))
         else:
-            console.print("[yellow]No terminals found[/yellow]")
+            console.print("[yellow]No PwnBox status found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
 @pwnbox.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
-
-def terminals_list(debug, json_output):
-    """Get PwnBox terminals list"""
+def terminate(debug, json_output):
+    """Terminate a PwnBox instance"""
     try:
         api_client = HTBAPIClient()
         pwnbox_module = PwnBoxModule(api_client)
-        result = pwnbox_module.get_pwnbox_terminals_list()
+        result = pwnbox_module.terminate_pwnbox()
         
-        if result and 'data' in result:
-            terminals_list_data = result['data']
-            
-            table = Table(title="PwnBox Terminals List")
-            table.add_column("ID", style="cyan")
-            table.add_column("Name", style="green")
-            table.add_column("Status", style="yellow")
-            table.add_column("Type", style="magenta")
-            table.add_column("Region", style="blue")
-            
-            for terminal in terminals_list_data:
-                table.add_row(
-                    str(terminal.get('id', 'N/A') or 'N/A'),
-                    str(terminal.get('name', 'N/A') or 'N/A'),
-                    str(terminal.get('status', 'N/A') or 'N/A'),
-                    str(terminal.get('type', 'N/A') or 'N/A'),
-                    str(terminal.get('region', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: PwnBox Terminate", json_output)
+            return
+        
+        console.print(Panel.fit(
+            "[bold green]PwnBox terminated successfully[/bold green]",
+            title="PwnBox Terminated"
+        ))
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@pwnbox.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def usage(debug, json_output):
+    """Get PwnBox usage statistics"""
+    try:
+        api_client = HTBAPIClient()
+        pwnbox_module = PwnBoxModule(api_client)
+        result = pwnbox_module.get_pwnbox_usage()
+        
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: PwnBox Usage", json_output)
+            return
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]PwnBox Usage Statistics[/bold green]\n"
+                f"Total Minutes: {result.get('total', 'N/A')}\n"
+                f"Used Minutes: {result.get('used', 'N/A')}\n"
+                f"Remaining Minutes: {result.get('remaining', 'N/A')}\n"
+                f"Active Minutes: {result.get('active_minutes', 'N/A')}\n"
+                f"Allowed: {result.get('allowed', 'N/A')}\n"
+                f"Sessions: {result.get('sessions', 'N/A')}",
+                title="PwnBox Usage"
+            ))
         else:
-            console.print("[yellow]No terminals list found[/yellow]")
+            console.print("[yellow]No usage statistics found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")

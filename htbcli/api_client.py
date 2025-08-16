@@ -44,6 +44,18 @@ class HTBAPIClient:
                 except:
                     pass
             
+            # Special handling for pwnbox terminate - 404 when no active instance is a valid response
+            if response.status_code == 404 and endpoint == "/pwnbox/terminate":
+                try:
+                    response_data = response.json()
+                    return response_data
+                except:
+                    pass
+            
+            # Special handling for pwnbox terminate - 204 when successfully terminated (no content)
+            if response.status_code == 204 and endpoint == "/pwnbox/terminate":
+                return {"message": "PwnBox terminated successfully"}
+            
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:

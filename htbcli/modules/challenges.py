@@ -3,7 +3,7 @@ Challenges module for HTB CLI
 """
 
 import click
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -83,17 +83,156 @@ class ChallengesModule:
         """Get official challenge writeup"""
         return self.api.get_binary(f"/challenge/{challenge_id}/writeup/official")
     
-    def get_challenges(self, page: int = 1, per_page: int = 20, difficulty: Optional[str] = None, category: Optional[str] = None) -> Dict[str, Any]:
-        """Get list of challenges"""
+    def get_challenges(
+        self, 
+        page: int = 1, 
+        per_page: int = 20,
+        status: Optional[str] = None,
+        state: Optional[list] = None,
+        sort_by: Optional[str] = None,
+        sort_type: Optional[str] = None,
+        difficulty: Optional[list] = None,
+        category: Optional[list] = None,
+        todo: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """Get list of challenges with filtering options"""
         params = {
             "page": page,
             "per_page": per_page
         }
+        
+        if status:
+            params["status"] = status
+        if state:
+            params["state"] = state
+        if sort_by:
+            params["sort_by"] = sort_by
+        if sort_type:
+            params["sort_type"] = sort_type
         if difficulty:
-            params["difficulty"] = difficulty
+            params["difficulty[]"] = difficulty
         if category:
-            params["category"] = category
+            params["category[]"] = category
+        if todo:
+            params["todo"] = todo
+            
         return self.api.get("/challenges", params=params)
+    
+    def search_challenge_by_name(self, challenge_name: str, max_pages: int = 5) -> Optional[int]:
+        """Search for a challenge by name and return its ID"""
+        try:
+            # Search through multiple pages to find the challenge
+            for page in range(1, max_pages + 1):
+                result = self.get_challenges(page=page, per_page=20)
+                
+                if not result or 'data' not in result:
+                    continue
+                
+                challenges = result['data']
+                if not challenges:
+                    continue
+                
+                # Search through challenges on this page
+                for challenge in challenges:
+                    name = challenge.get('name', '').lower()
+                    challenge_id = challenge.get('id')
+                    
+                    # Check for exact match first
+                    if name == challenge_name.lower():
+                        return challenge_id
+                    
+                    # Check for partial match (contains)
+                    if challenge_name.lower() in name:
+                        return challenge_id
+                
+                # If no more challenges on this page, stop searching
+                if len(challenges) < 20:
+                    break
+            
+            return None
+            
+        except Exception as e:
+            console.print(f"[red]Error searching for challenge '{challenge_name}': {e}[/red]")
+            return None
+    
+    def resolve_challenge_id(self, challenge_identifier: Union[int, str]) -> Optional[int]:
+        """Resolve challenge identifier to challenge ID"""
+        if isinstance(challenge_identifier, int):
+            return challenge_identifier
+        elif isinstance(challenge_identifier, str):
+            # Try to convert to int first (in case it's a string number)
+            try:
+                return int(challenge_identifier)
+            except ValueError:
+                # Search for challenge by name
+                console.print(f"[blue]Searching for challenge: {challenge_identifier}[/blue]")
+                challenge_id = self.search_challenge_by_name(challenge_identifier)
+                if challenge_id:
+                    console.print(f"[green]✓[/green] Found challenge ID: {challenge_id} for '{challenge_identifier}'")
+                    return challenge_id
+                else:
+                    console.print(f"[red]Could not find challenge with name: {challenge_identifier}[/red]")
+                    return None
+        else:
+            console.print(f"[red]Invalid challenge identifier type: {type(challenge_identifier)}[/red]")
+            return None
+    
+    def resolve_category_id(self, category_identifier: Union[int, str]) -> Optional[int]:
+        """Resolve category identifier to category ID"""
+        if isinstance(category_identifier, int):
+            return category_identifier
+        elif isinstance(category_identifier, str):
+            # Try to convert to int first (in case it's a string number)
+            try:
+                return int(category_identifier)
+            except ValueError:
+                # Search for category by name
+                console.print(f"[blue]Searching for category: {category_identifier}[/blue]")
+                category_id = self.search_category_by_name(category_identifier)
+                if category_id:
+                    console.print(f"[green]✓[/green] Found category ID: {category_id} for '{category_identifier}'")
+                    return category_id
+                else:
+                    console.print(f"[red]Could not find category with name: {category_identifier}[/red]")
+                    return None
+        else:
+            console.print(f"[red]Invalid category identifier type: {type(category_identifier)}[/red]")
+            return None
+    
+    def search_category_by_name(self, category_name: str) -> Optional[int]:
+        """Search for a category by name and return its ID"""
+        try:
+            result = self.get_challenge_categories_list()
+            
+            if not result or ('data' not in result and 'info' not in result):
+                console.print(f"[yellow]No data in categories response[/yellow]")
+                return None
+            
+            categories = result.get('data') or result.get('info')
+            if not categories:
+                console.print(f"[yellow]No categories found[/yellow]")
+                return None
+            
+            # Search through categories
+            for category in categories:
+                name = category.get('name', '').lower()
+                category_id = category.get('id')
+                
+
+                
+                # Check for exact match first
+                if name == category_name.lower():
+                    return category_id
+                
+                # Check for partial match (contains)
+                if category_name.lower() in name:
+                    return category_id
+            
+            return None
+            
+        except Exception as e:
+            console.print(f"[red]Error searching for category '{category_name}': {e}[/red]")
+            return None
     
     def update_todo(self, product: str, product_id: int, todo_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update todo list"""
@@ -108,16 +247,74 @@ def challenges():
 @challenges.command()
 @click.option('--page', default=1, help='Page number')
 @click.option('--per-page', default=20, help='Results per page')
-@click.option('--difficulty', help='Challenge difficulty')
-@click.option('--category', help='Challenge category')
+@click.option('--status', 
+              type=click.Choice(['incompleted', 'complete']),
+              help='Filter by completion status')
+@click.option('--state', 
+              multiple=True,
+              type=click.Choice(['active', 'retired', 'unreleased']),
+              help='Filter by state (can be used multiple times)')
+@click.option('--sort-by', 
+              type=click.Choice(['release-date', 'name', 'user-owns', 'system-owns', 'rating', 'user-difficulty']),
+              help='Sort by field')
+@click.option('--sort-type', 
+              type=click.Choice(['asc', 'desc']),
+              help='Sort type (asc or desc)')
+@click.option('--difficulty', 
+              multiple=True,
+              type=click.Choice(['very-easy', 'easy', 'medium', 'hard', 'insane']),
+              help='Filter by difficulty (can be used multiple times)')
+@click.option('--category', 
+              multiple=True,
+              help='Filter by category ID or name (can be used multiple times)')
+@click.option('--todo', 
+              is_flag=True,
+              help='Show only challenges in todo list')
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def list_challenges(page, per_page, difficulty, category, responses, option):
-    """List challenges"""
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def list_challenges(page, per_page, status, state, sort_by, sort_type, difficulty, category, todo, responses, option, debug, json_output):
+    """List challenges with filtering options"""
     try:
         api_client = HTBAPIClient()
         challenges_module = ChallengesModule(api_client)
-        result = challenges_module.get_challenges(page, per_page, difficulty, category)
+        
+        # Convert difficulty and state from tuples to lists if they exist
+        difficulty_list = list(difficulty) if difficulty else None
+        state_list = list(state) if state else None
+        
+        # Resolve category identifiers to IDs
+        category_list = None
+        if category:
+            resolved_categories = []
+            for cat in category:
+                category_id = challenges_module.resolve_category_id(cat)
+                if category_id is not None:
+                    resolved_categories.append(category_id)
+                else:
+                    # If any category fails to resolve, skip the entire request
+                    return
+            category_list = resolved_categories if resolved_categories else None
+        
+        # Convert todo flag to integer if set
+        todo_value = 1 if todo else None
+        
+        result = challenges_module.get_challenges(
+            page=page, 
+            per_page=per_page,
+            status=status,
+            state=state_list,
+            sort_by=sort_by,
+            sort_type=sort_type,
+            difficulty=difficulty_list,
+            category=category_list,
+            todo=todo_value
+        )
+        
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: Challenges List", json_output)
+            return
         
         if result and 'data' in result:
             challenges_data = result['data']
@@ -138,7 +335,7 @@ def list_challenges(page, per_page, difficulty, category, responses, option):
                 table.add_column("Name", style="green")
                 table.add_column("Category", style="yellow")
                 table.add_column("Difficulty", style="magenta")
-                table.add_column("Points", style="blue")
+                table.add_column("Rating", style="blue")
                 table.add_column("Solves", style="red")
                 
                 # Add additional columns for specified fields
@@ -152,7 +349,7 @@ def list_challenges(page, per_page, difficulty, category, responses, option):
                         str(challenge.get('name', 'N/A') or 'N/A'),
                         str(challenge.get('category_name', 'N/A') or 'N/A'),
                         str(challenge.get('difficulty', 'N/A') or 'N/A'),
-                        str(challenge.get('points', 'N/A') or 'N/A'),
+                        str(challenge.get('rating', 'N/A') or 'N/A'),
                         str(challenge.get('solves', 'N/A') or 'N/A')
                     ]
                     
@@ -170,7 +367,7 @@ def list_challenges(page, per_page, difficulty, category, responses, option):
                 table.add_column("Name", style="green")
                 table.add_column("Category", style="yellow")
                 table.add_column("Difficulty", style="magenta")
-                table.add_column("Points", style="blue")
+                table.add_column("Rating", style="blue")
                 table.add_column("Solves", style="red")
                 
                 try:
@@ -180,7 +377,7 @@ def list_challenges(page, per_page, difficulty, category, responses, option):
                             str(challenge.get('name', 'N/A') or 'N/A'),
                             str(challenge.get('category_name', 'N/A') or 'N/A'),
                             str(challenge.get('difficulty', 'N/A') or 'N/A'),
-                            str(challenge.get('points', 'N/A') or 'N/A'),
+                            str(challenge.get('rating', 'N/A') or 'N/A'),
                             str(challenge.get('solves', 'N/A') or 'N/A')
                         )
                     
@@ -235,9 +432,10 @@ def info(challenge_slug, responses, option):
                     f"Name: {info.get('name', 'N/A') or 'N/A'}\n"
                     f"Category: {info.get('category_name', 'N/A') or 'N/A'}\n"
                     f"Difficulty: {info.get('difficulty', 'N/A') or 'N/A'}\n"
+                    f"Stars: {info.get('stars', 'N/A') or 'N/A'}\n"
                     f"Points: {info.get('points', 'N/A') or 'N/A'}\n"
                     f"Solves: {info.get('solves', 'N/A') or 'N/A'}\n"
-                    f"Rating: {info.get('rating', 'N/A') or 'N/A'}\n"
+                    f"Reviews Count: {info.get('reviews_count', 'N/A') or 'N/A'}\n"
                     f"State: {info.get('state', 'N/A') or 'N/A'}\n"
                     f"Release Date: {info.get('release_date', 'N/A') or 'N/A'}\n"
                     f"Description: {info.get('description', 'N/A') or 'N/A'}",
@@ -275,12 +473,18 @@ def submit(flag, debug, json_output):
 @challenges.command()
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def categories(responses, option):
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def categories(responses, option, debug, json_output):
     """Get challenge categories"""
     try:
         api_client = HTBAPIClient()
         challenges_module = ChallengesModule(api_client)
         result = challenges_module.get_challenge_categories_list()
+        
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: Challenge Categories", json_output)
+            return
         
         if result and ('data' in result or 'info' in result):
             categories_data = result.get('data') or result.get('info')
@@ -475,14 +679,20 @@ def suggested(responses, option):
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
-@click.argument('challenge_id', type=int)
+@click.argument('challenge_identifier')
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def activity(challenge_id, responses, option):
+def activity(challenge_identifier, responses, option):
     """Get challenge activity"""
     try:
         api_client = HTBAPIClient()
         challenges_module = ChallengesModule(api_client)
+        
+        # Resolve challenge identifier to ID
+        challenge_id = challenges_module.resolve_challenge_id(challenge_identifier)
+        if challenge_id is None:
+            return
+            
         result = challenges_module.get_challenge_activity(challenge_id)
         
         if result and 'data' in result:
@@ -534,14 +744,20 @@ def activity(challenge_id, responses, option):
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
-@click.argument('challenge_id', type=int)
+@click.argument('challenge_identifier')
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def changelog(challenge_id, responses, option):
+def changelog(challenge_identifier, responses, option):
     """Get challenge changelog"""
     try:
         api_client = HTBAPIClient()
         challenges_module = ChallengesModule(api_client)
+        
+        # Resolve challenge identifier to ID
+        challenge_id = challenges_module.resolve_challenge_id(challenge_identifier)
+        if challenge_id is None:
+            return
+            
         result = challenges_module.get_challenge_changelog(challenge_id)
         
         if result and 'data' in result:
@@ -622,15 +838,20 @@ def download(challenge_id, output):
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
+@click.argument('challenge_identifier')
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
-
-@click.argument('challenge_id', type=int)
-def start(challenge_id, debug, json_output):
+def start(challenge_identifier, debug, json_output):
     """Start a challenge"""
     try:
         api_client = HTBAPIClient()
         challenges_module = ChallengesModule(api_client)
+        
+        # Resolve challenge identifier to ID
+        challenge_id = challenges_module.resolve_challenge_id(challenge_identifier)
+        if challenge_id is None:
+            return
+            
         result = challenges_module.start_challenge(challenge_id)
         
         if result:
@@ -647,15 +868,20 @@ def start(challenge_id, debug, json_output):
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
+@click.argument('challenge_identifier')
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
-
-@click.argument('challenge_id', type=int)
-def stop(challenge_id, debug, json_output):
+def stop(challenge_identifier, debug, json_output):
     """Stop a challenge"""
     try:
         api_client = HTBAPIClient()
         challenges_module = ChallengesModule(api_client)
+        
+        # Resolve challenge identifier to ID
+        challenge_id = challenges_module.resolve_challenge_id(challenge_identifier)
+        if challenge_id is None:
+            return
+            
         result = challenges_module.stop_challenge(challenge_id)
         
         if result:
@@ -672,15 +898,20 @@ def stop(challenge_id, debug, json_output):
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
+@click.argument('challenge_identifier')
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
-
-@click.argument('challenge_id', type=int)
-def writeup(challenge_id, debug, json_output):
+def writeup(challenge_identifier, debug, json_output):
     """Get challenge writeup"""
     try:
         api_client = HTBAPIClient()
         challenges_module = ChallengesModule(api_client)
+        
+        # Resolve challenge identifier to ID
+        challenge_id = challenges_module.resolve_challenge_id(challenge_identifier)
+        if challenge_id is None:
+            return
+            
         result = challenges_module.get_challenge_writeup(challenge_id)
         
         if result and 'data' in result and 'official' in result['data']:
@@ -701,13 +932,19 @@ def writeup(challenge_id, debug, json_output):
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
-@click.argument('challenge_id', type=int)
+@click.argument('challenge_identifier')
 @click.option('--output', '-o', help='Output filename for the downloaded file')
-def writeup_official(challenge_id, output):
+def writeup_official(challenge_identifier, output):
     """Get official challenge writeup"""
     try:
         api_client = HTBAPIClient()
         challenges_module = ChallengesModule(api_client)
+        
+        # Resolve challenge identifier to ID
+        challenge_id = challenges_module.resolve_challenge_id(challenge_identifier)
+        if challenge_id is None:
+            return
+            
         result = challenges_module.get_challenge_writeup_official(challenge_id)
         
         if result:
@@ -757,15 +994,45 @@ def mark_helpful(review_id, debug, json_output):
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
+@click.argument('challenge_name')
+@click.option('--max-pages', default=5, help='Maximum number of pages to search')
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def search(challenge_name, max_pages, debug, json_output):
+    """Search for a challenge by name"""
+    try:
+        api_client = HTBAPIClient()
+        challenges_module = ChallengesModule(api_client)
+        
+        challenge_id = challenges_module.search_challenge_by_name(challenge_name, max_pages)
+        
+        if challenge_id:
+            console.print(Panel.fit(
+                f"[bold green]Challenge Found[/bold green]\n"
+                f"Name: {challenge_name}\n"
+                f"ID: {challenge_id}",
+                title="Challenge Search Result"
+            ))
+        else:
+            console.print(f"[yellow]No challenge found with name: {challenge_name}[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
 
-@click.argument('challenge_id', type=int)
-def reviews_user(challenge_id, debug, json_output):
+@challenges.command()
+@click.argument('challenge_identifier')
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def reviews_user(challenge_identifier, debug, json_output):
     """Get user's review for challenge"""
     try:
         api_client = HTBAPIClient()
         challenges_module = ChallengesModule(api_client)
+        
+        # Resolve challenge identifier to ID
+        challenge_id = challenges_module.resolve_challenge_id(challenge_identifier)
+        if challenge_id is None:
+            return
+            
         result = challenges_module.get_challenge_reviews_user(challenge_id)
         
         if result and 'data' in result:

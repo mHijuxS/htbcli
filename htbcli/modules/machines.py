@@ -50,12 +50,42 @@ class MachinesModule:
         """Get machine graph difficulty"""
         return self.api.get(f"/machine/graph/owns/difficulty/{machine_id}")
     
-    def get_machine_list_retired_paginated(self, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
-        """Get paginated list of retired machines"""
+    def get_machine_list_retired_paginated(
+        self, 
+        page: int = 1, 
+        per_page: int = 20,
+        sort_by: Optional[str] = None,
+        sort_type: Optional[str] = None,
+        difficulty: Optional[list] = None,
+        os: Optional[list] = None,
+        tags: Optional[list] = None,
+        keyword: Optional[str] = None,
+        show_completed: Optional[str] = None,
+        free: Optional[bool] = None
+    ) -> Dict[str, Any]:
+        """Get paginated list of retired machines with filtering options"""
         params = {
             "page": page,
             "per_page": per_page
         }
+        
+        if sort_by:
+            params["sort_by"] = sort_by
+        if sort_type:
+            params["sort_type"] = sort_type
+        if difficulty:
+            params["difficulty[]"] = difficulty
+        if os:
+            params["os"] = os
+        if tags:
+            params["tags"] = tags
+        if keyword:
+            params["keyword"] = keyword
+        if show_completed:
+            params["show_completed"] = show_completed
+        if free:
+            params["free"] = "true"
+            
         return self.api.get("/machine/list/retired/paginated", params=params)
     
     def submit_machine_flag(self, flag: str, machine_id: int) -> Dict[str, Any]:
@@ -68,14 +98,40 @@ class MachinesModule:
         """Get top 25 owners for a machine"""
         return self.api.get(f"/machine/owns/top/{machine_id}")
     
-    def get_machine_paginated(self, page: int = 1, per_page: int = 20, status: Optional[str] = None) -> Dict[str, Any]:
-        """Get paginated list of machines"""
+    def get_machine_paginated(
+        self, 
+        page: int = 1, 
+        per_page: int = 20, 
+        status: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        sort_type: Optional[str] = None,
+        difficulty: Optional[list] = None,
+        os: Optional[list] = None,
+        tags: Optional[list] = None,
+        keyword: Optional[str] = None,
+        show_completed: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get paginated list of machines with filtering options"""
         params = {
             "page": page,
             "per_page": per_page
         }
         if status:
             params["status"] = status
+        if sort_by:
+            params["sort_by"] = sort_by
+        if sort_type:
+            params["sort_type"] = sort_type
+        if difficulty:
+            params["difficulty[]"] = difficulty
+        if os:
+            params["os"] = os
+        if tags:
+            params["tags"] = tags
+        if keyword:
+            params["keyword"] = keyword
+        if show_completed:
+            params["show_completed"] = show_completed
         return self.api.get("/machine/paginated", params=params)
     
     def get_machine_profile(self, machine_slug: str) -> Dict[str, Any]:
@@ -150,10 +206,10 @@ class MachinesModule:
         """Get machines tasks"""
         return self.api.get(f"/machines/tasks/{machine_id}")
     
-    def search_machine_by_name(self, machine_name: str, max_pages: int = 5) -> Optional[int]:
+    def search_machine_by_name(self, machine_name: str, max_pages: int = 20) -> Optional[int]:
         """Search for a machine by name and return its ID"""
         try:
-            # Search through multiple pages to find the machine
+            # Search through active machines
             for page in range(1, max_pages + 1):
                 result = self.get_machine_paginated(page=page, per_page=20, status='active')
                 
@@ -161,6 +217,34 @@ class MachinesModule:
                     continue
                 
                 machines = result['data']
+                if not machines:
+                    continue
+                
+                # Search through machines on this page
+                for machine in machines:
+                    name = machine.get('name', '').lower()
+                    machine_id = machine.get('id')
+                    
+                    # Check for exact match first
+                    if name == machine_name.lower():
+                        return machine_id
+                    
+                    # Check for partial match (contains)
+                    if machine_name.lower() in name:
+                        return machine_id
+                
+                # If no more machines on this page, stop searching
+                if len(machines) < 20:
+                    break
+            
+            # Search through retired machines using the correct endpoint
+            for page in range(1, max_pages + 1):
+                result = self.get_machine_list_retired_paginated(page=page, per_page=20)
+                
+                if not result or 'data' not in result:
+                    continue
+                
+                machines = result['data']['data'] if isinstance(result['data'], dict) and 'data' in result['data'] else result['data']
                 if not machines:
                     continue
                 
@@ -457,18 +541,77 @@ def creators(machine_identifier, debug, json_output):
 @click.option('--page', default=1, help='Page number')
 @click.option('--per-page', default=20, help='Results per page')
 @click.option('--status', default='active', help='Machine status (active/retired)')
+@click.option('--sort-by', 
+              type=click.Choice(['release-date', 'name', 'user-owns', 'system-owns', 'rating', 'user-difficulty']),
+              help='Sort by field')
+@click.option('--sort-type', 
+              type=click.Choice(['asc', 'desc']),
+              help='Sort type (asc or desc)')
+@click.option('--difficulty', 
+              multiple=True,
+              type=click.Choice(['very-easy', 'easy', 'medium', 'hard', 'insane']),
+              help='Filter by difficulty (can be used multiple times)')
+@click.option('--os', 
+              multiple=True,
+              type=click.Choice(['linux', 'windows', 'freebsd', 'openbsd', 'other']),
+              help='Filter by OS (can be used multiple times)')
+@click.option('--tags', 
+              multiple=True,
+              type=int,
+              help='Filter by tag ID (can be used multiple times)')
+@click.option('--keyword', 
+              help='Search keyword')
+@click.option('--show-completed', 
+              type=click.Choice(['complete', 'incomplete']),
+              help='Show completed or incomplete machines')
+@click.option('--free', 
+              is_flag=True,
+              help='Show only free machines (retired machines only)')
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def list_machines(page, per_page, status, responses, option):
-    """List machines"""
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def list_machines(page, per_page, status, sort_by, sort_type, difficulty, os, tags, keyword, show_completed, free, responses, option, debug, json_output):
+    """List machines with filtering options"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
         
+        # Convert difficulty and os from tuples to lists if they exist
+        difficulty_list = list(difficulty) if difficulty else None
+        os_list = list(os) if os else None
+        tags_list = list(tags) if tags else None
+        
         if status == 'retired':
-            result = machines_module.get_machine_list_retired_paginated(page, per_page)
+            result = machines_module.get_machine_list_retired_paginated(
+                page=page, 
+                per_page=per_page,
+                sort_by=sort_by,
+                sort_type=sort_type,
+                difficulty=difficulty_list,
+                os=os_list,
+                tags=tags_list,
+                keyword=keyword,
+                show_completed=show_completed,
+                free=free
+            )
         else:
-            result = machines_module.get_machine_paginated(page, per_page, status)
+            result = machines_module.get_machine_paginated(
+                page=page, 
+                per_page=per_page, 
+                status=status,
+                sort_by=sort_by,
+                sort_type=sort_type,
+                difficulty=difficulty_list,
+                os=os_list,
+                tags=tags_list,
+                keyword=keyword,
+                show_completed=show_completed
+            )
+        
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: Machines List", json_output)
+            return
         
         if result and 'data' in result:
             machines_data = result['data']['data'] if isinstance(result['data'], dict) and 'data' in result['data'] else result['data']
@@ -489,7 +632,7 @@ def list_machines(page, per_page, status, responses, option):
                 table.add_column("Name", style="green")
                 table.add_column("OS", style="yellow")
                 table.add_column("Difficulty", style="magenta")
-                table.add_column("Points", style="blue")
+                table.add_column("Rating", style="blue")
                 table.add_column("Status", style="red")
                 
                 # Add additional columns for specified fields
@@ -502,8 +645,8 @@ def list_machines(page, per_page, status, responses, option):
                         str(machine.get('id', 'N/A') or 'N/A'),
                         str(machine.get('name', 'N/A') or 'N/A'),
                         str(machine.get('os', 'N/A') or 'N/A'),
-                        str(machine.get('difficulty', 'N/A') or 'N/A'),
-                        str(machine.get('points', 'N/A') or 'N/A'),
+                        str(machine.get('difficultyText', 'N/A') or 'N/A'),
+                        str(machine.get('star', 'N/A') or 'N/A'),
                         str(machine.get('status', 'N/A') or 'N/A')
                     ]
                     
@@ -521,7 +664,7 @@ def list_machines(page, per_page, status, responses, option):
                 table.add_column("Name", style="green")
                 table.add_column("OS", style="yellow")
                 table.add_column("Difficulty", style="magenta")
-                table.add_column("Points", style="blue")
+                table.add_column("Rating", style="blue")
                 table.add_column("Status", style="red")
                 
                 try:
@@ -530,8 +673,8 @@ def list_machines(page, per_page, status, responses, option):
                             str(machine.get('id', 'N/A') or 'N/A'),
                             str(machine.get('name', 'N/A') or 'N/A'),
                             str(machine.get('os', 'N/A') or 'N/A'),
-                            str(machine.get('difficulty', 'N/A') or 'N/A'),
-                            str(machine.get('points', 'N/A') or 'N/A'),
+                            str(machine.get('difficultyText', 'N/A') or 'N/A'),
+                            str(machine.get('star', 'N/A') or 'N/A'),
                             str(machine.get('status', 'N/A') or 'N/A')
                         )
                     
@@ -914,12 +1057,61 @@ def graph_difficulty(machine_identifier, debug, json_output):
 @machines.command()
 @click.option('--page', default=1, help='Page number')
 @click.option('--per-page', default=20, help='Results per page')
-def retired_list(page, per_page):
-    """Get paginated list of retired machines"""
+@click.option('--sort-by', 
+              type=click.Choice(['release-date', 'name', 'user-owns', 'system-owns', 'rating', 'user-difficulty']),
+              help='Sort by field')
+@click.option('--sort-type', 
+              type=click.Choice(['asc', 'desc']),
+              help='Sort type (asc or desc)')
+@click.option('--difficulty', 
+              multiple=True,
+              type=click.Choice(['very-easy', 'easy', 'medium', 'hard', 'insane']),
+              help='Filter by difficulty (can be used multiple times)')
+@click.option('--os', 
+              multiple=True,
+              type=click.Choice(['linux', 'windows', 'freebsd', 'openbsd', 'other']),
+              help='Filter by OS (can be used multiple times)')
+@click.option('--tags', 
+              multiple=True,
+              type=int,
+              help='Filter by tag ID (can be used multiple times)')
+@click.option('--keyword', 
+              help='Search keyword')
+@click.option('--show-completed', 
+              type=click.Choice(['complete', 'incomplete']),
+              help='Show completed or incomplete machines')
+@click.option('--free', 
+              is_flag=True,
+              help='Show only free machines')
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def retired_list(page, per_page, sort_by, sort_type, difficulty, os, tags, keyword, show_completed, free, debug, json_output):
+    """Get paginated list of retired machines with filtering options"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
-        result = machines_module.get_machine_list_retired_paginated(page, per_page)
+        
+        # Convert difficulty and os from tuples to lists if they exist
+        difficulty_list = list(difficulty) if difficulty else None
+        os_list = list(os) if os else None
+        tags_list = list(tags) if tags else None
+        
+        result = machines_module.get_machine_list_retired_paginated(
+            page=page, 
+            per_page=per_page,
+            sort_by=sort_by,
+            sort_type=sort_type,
+            difficulty=difficulty_list,
+            os=os_list,
+            tags=tags_list,
+            keyword=keyword,
+            show_completed=show_completed,
+            free=free
+        )
+        
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: Retired Machines", json_output)
+            return
         
         if result and 'data' in result:
             machines_data = result['data']['data'] if isinstance(result['data'], dict) and 'data' in result['data'] else result['data']
@@ -929,15 +1121,15 @@ def retired_list(page, per_page):
             table.add_column("Name", style="green")
             table.add_column("OS", style="yellow")
             table.add_column("Difficulty", style="magenta")
-            table.add_column("Points", style="blue")
+            table.add_column("Rating", style="blue")
             
             for machine in machines_data:
                 table.add_row(
                     str(machine.get('id', 'N/A') or 'N/A'),
                     str(machine.get('name', 'N/A') or 'N/A'),
                     str(machine.get('os', 'N/A') or 'N/A'),
-                    str(machine.get('difficulty', 'N/A') or 'N/A'),
-                    str(machine.get('points', 'N/A') or 'N/A')
+                    str(machine.get('difficultyText', 'N/A') or 'N/A'),
+                    str(machine.get('star', 'N/A') or 'N/A')
                 )
             
             console.print(table)
@@ -1161,15 +1353,15 @@ def todo_list(page, per_page):
             table.add_column("Name", style="green")
             table.add_column("OS", style="yellow")
             table.add_column("Difficulty", style="magenta")
-            table.add_column("Points", style="blue")
+            table.add_column("Rating", style="blue")
             
             for machine in todo_data:
                 table.add_row(
                     str(machine.get('id', 'N/A') or 'N/A'),
                     str(machine.get('name', 'N/A') or 'N/A'),
                     str(machine.get('os', 'N/A') or 'N/A'),
-                    str(machine.get('difficulty', 'N/A') or 'N/A'),
-                    str(machine.get('points', 'N/A') or 'N/A')
+                    str(machine.get('difficultyText', 'N/A') or 'N/A'),
+                    str(machine.get('star', 'N/A') or 'N/A')
                 )
             
             console.print(table)

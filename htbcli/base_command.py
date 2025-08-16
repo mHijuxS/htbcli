@@ -44,7 +44,7 @@ def handle_debug_option(debug: bool, result: Dict[str, Any], title: str = "Debug
     Returns:
         bool: True if debug was handled (should return early), False otherwise
     """
-    if debug:
+    if debug or json_output:
         debug_response(result, title, json_output)
         return True
     return False
