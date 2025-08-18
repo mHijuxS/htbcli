@@ -25,13 +25,19 @@ git clone <repository-url>
 cd htbcli
 
 # Install using uv (recommended)
-
 uv tool install .
+
+# Or run directly without installation
+uv run htbcli --help
 ```
 
 ### Install dependencies only
 
 ```bash
+# Using uv (recommended)
+uv add requests click pyyaml rich tabulate python-dotenv
+
+# Or using pip
 pip install requests click pyyaml rich tabulate python-dotenv
 ```
 
@@ -68,140 +74,216 @@ htbcli info
 
 ```bash
 # Show help
-.venv/bin/htbcli --help
+htbcli --help
+# or
+uv run htbcli --help
 
 # Show version
-.venv/bin/htbcli --version
+htbcli --version
+# or
+uv run htbcli --version
 
 # Show configuration info
-.venv/bin/htbcli info
+htbcli info
+# or
+uv run htbcli info
 
 # Setup instructions
-.venv/bin/htbcli setup
+htbcli setup
+# or
+uv run htbcli setup
 
 # List all available endpoints
-.venv/bin/htbcli endpoints
+htbcli endpoints
+# or
+uv run htbcli endpoints
 
 # Show module information
-.venv/bin/htbcli module-info Machines
+htbcli module-info Machines
+# or
+uv run htbcli module-info Machines
 ```
 
 ### Machines Module
 
 ```bash
 # Get currently active machine
-.venv/bin/htbcli machines active
+htbcli machines active
+# or
+uv run htbcli machines active
 
 # List machines (paginated)
-.venv/bin/htbcli machines list --page 1 --per-page 20 --status active
+htbcli machines list --page 1 --per-page 20 --status active
+# or
+uv run htbcli machines list --page 1 --per-page 20 --status active
 
 # Get machine profile by slug
-.venv/bin/htbcli machines profile machine-name
+htbcli machines profile machine-name
+# or
+uv run htbcli machines profile machine-name
 
 # Submit flag for machine (using active machine, machine ID, name, or stdin)
-echo "flag{your_flag_here}" | .venv/bin/htbcli machines submit
-.venv/bin/htbcli machines submit "flag{your_flag_here}"
-.venv/bin/htbcli machines submit 12345 "flag{your_flag_here}"
-.venv/bin/htbcli machines submit "machine-name" "flag{your_flag_here}"
-echo "flag{your_flag_here}" | .venv/bin/htbcli machines submit "machine-name"
+echo "flag{your_flag_here}" | htbcli machines submit
+htbcli machines submit "flag{your_flag_here}"
+htbcli machines submit 12345 "flag{your_flag_here}"
+htbcli machines submit "machine-name" "flag{your_flag_here}"
+echo "flag{your_flag_here}" | htbcli machines submit "machine-name"
 ```
 
 ### Challenges Module
 
 ```bash
 # List challenges
-.venv/bin/htbcli challenges list --page 1 --per-page 20 --difficulty Easy
+htbcli challenges list --page 1 --per-page 20 --difficulty Easy
+# or
+uv run htbcli challenges list --page 1 --per-page 20 --difficulty Easy
 
 # Get challenge profile
-.venv/bin/htbcli challenges profile challenge-name
+htbcli challenges profile challenge-name
+# or
+uv run htbcli challenges profile challenge-name
 
 # Submit challenge flag
-.venv/bin/htbcli challenges submit "flag{your_flag_here}"
+htbcli challenges submit "flag{your_flag_here}"
+# or
+uv run htbcli challenges submit "flag{your_flag_here}"
 ```
 
 ### User Module
 
 ```bash
 # Get user profile
-.venv/bin/htbcli user profile 12345
+htbcli user profile 12345
+# or
+uv run htbcli user profile 12345
 
 # Get user owns
-.venv/bin/htbcli user owns 12345
+htbcli user owns 12345
+# or
+uv run htbcli user owns 12345
 
 # Get user activity
-.venv/bin/htbcli user activity 12345
+htbcli user activity 12345
+# or
+uv run htbcli user activity 12345
 
 # Get user rankings
-.venv/bin/htbcli user rankings 12345
+htbcli user rankings 12345
+# or
+uv run htbcli user rankings 12345
 ```
 
 ### Season Module
 
 ```bash
 # List all seasons
-.venv/bin/htbcli season list
+htbcli season list
+# or
+uv run htbcli season list
 
 # Get season machines
-.venv/bin/htbcli season machines
+htbcli season machines
+# or
+uv run htbcli season machines
 
 # Get completed season machines
-.venv/bin/htbcli season completed 1
+htbcli season completed 1
+# or
+uv run htbcli season completed 1
 
 # Submit seasonal flag
-.venv/bin/htbcli season submit "flag{your_flag_here}"
+htbcli season submit "flag{your_flag_here}"
+# or
+uv run htbcli season submit "flag{your_flag_here}"
 
 # Get arena stats
-.venv/bin/htbcli season stats
+htbcli season stats
+# or
+uv run htbcli season stats
 ```
 
 ### Sherlocks Module
 
 ```bash
 # List sherlocks
-.venv/bin/htbcli sherlocks list-sherlocks --page 1 --per-page 20
+htbcli sherlocks list-sherlocks --page 1 --per-page 20
+# or
+uv run htbcli sherlocks list-sherlocks --page 1 --per-page 20
 
 # Get sherlock categories
-.venv/bin/htbcli sherlocks categories
+htbcli sherlocks categories
+# or
+uv run htbcli sherlocks categories
 
 # Get sherlock info by ID or name
-.venv/bin/htbcli sherlocks info 123
-.venv/bin/htbcli sherlocks info "brutus"
+htbcli sherlocks info 123
+htbcli sherlocks info "brutus"
+# or
+uv run htbcli sherlocks info 123
+uv run htbcli sherlocks info "brutus"
 
 # Download sherlock file (default behavior)
-.venv/bin/htbcli sherlocks download 123
-.venv/bin/htbcli sherlocks download "brutus"
+htbcli sherlocks download 123
+htbcli sherlocks download "brutus"
+# or
+uv run htbcli sherlocks download 123
+uv run htbcli sherlocks download "brutus"
 
 # Show download link only
-.venv/bin/htbcli sherlocks download 123 --link-only
-.venv/bin/htbcli sherlocks download "brutus" --link-only
+htbcli sherlocks download 123 --link-only
+htbcli sherlocks download "brutus" --link-only
+# or
+uv run htbcli sherlocks download 123 --link-only
+uv run htbcli sherlocks download "brutus" --link-only
 
 # Download sherlock file with custom filename
-.venv/bin/htbcli sherlocks download 123 --output my_sherlock.zip
-.venv/bin/htbcli sherlocks download "brutus" --output brutus.zip
+htbcli sherlocks download 123 --output my_sherlock.zip
+htbcli sherlocks download "brutus" --output brutus.zip
+# or
+uv run htbcli sherlocks download 123 --output my_sherlock.zip
+uv run htbcli sherlocks download "brutus" --output brutus.zip
 
 # Start playing a sherlock
-.venv/bin/htbcli sherlocks play 123
-.venv/bin/htbcli sherlocks play "brutus"
+htbcli sherlocks play 123
+htbcli sherlocks play "brutus"
+# or
+uv run htbcli sherlocks play 123
+uv run htbcli sherlocks play "brutus"
 
 # Get sherlock progress
-.venv/bin/htbcli sherlocks progress 123
-.venv/bin/htbcli sherlocks progress "brutus"
+htbcli sherlocks progress 123
+htbcli sherlocks progress "brutus"
+# or
+uv run htbcli sherlocks progress 123
+uv run htbcli sherlocks progress "brutus"
 
 # Get sherlock tasks
-.venv/bin/htbcli sherlocks tasks 123
-.venv/bin/htbcli sherlocks tasks "brutus"
+htbcli sherlocks tasks 123
+htbcli sherlocks tasks "brutus"
+# or
+uv run htbcli sherlocks tasks 123
+uv run htbcli sherlocks tasks "brutus"
 
 # Submit flag for a specific sherlock task
-.venv/bin/htbcli sherlocks submit-flag 123 456 "flag{your_flag_here}"
-.venv/bin/htbcli sherlocks submit-flag "brutus" 456 "flag{your_flag_here}"
+htbcli sherlocks submit-flag 123 456 "flag{your_flag_here}"
+htbcli sherlocks submit-flag "brutus" 456 "flag{your_flag_here}"
+# or
+uv run htbcli sherlocks submit-flag 123 456 "flag{your_flag_here}"
+uv run htbcli sherlocks submit-flag "brutus" 456 "flag{your_flag_here}"
 
 # Get sherlock writeup
-.venv/bin/htbcli sherlocks writeup 123
-.venv/bin/htbcli sherlocks writeup "brutus"
+htbcli sherlocks writeup 123
+htbcli sherlocks writeup "brutus"
+# or
+uv run htbcli sherlocks writeup 123
+uv run htbcli sherlocks writeup "brutus"
 
 # Get official sherlock writeup
-.venv/bin/htbcli sherlocks writeup-official 123
-.venv/bin/htbcli sherlocks writeup-official "brutus"
+htbcli sherlocks writeup-official 123
+htbcli sherlocks writeup-official "brutus"
+# or
+uv run htbcli sherlocks writeup-official 123
+uv run htbcli sherlocks writeup-official "brutus"
 ```
 
 ## Available Modules
@@ -233,78 +315,108 @@ The CLI is organized into the following modules based on the HTB API:
 
 ### Get Active Machine Information
 ```bash
-.venv/bin/htbcli machines active
+htbcli machines active
+# or
+uv run htbcli machines active
 ```
 
 ### List First Page of Active Machines
 ```bash
-.venv/bin/htbcli machines list --page 1 --per-page 10 --status active
+htbcli machines list --page 1 --per-page 10 --status active
+# or
+uv run htbcli machines list --page 1 --per-page 10 --status active
 ```
 
 ### Submit a Flag
 ```bash
 # Submit flag to active machine (most convenient)
-echo "flag{abc123def456}" | .venv/bin/htbcli machines submit
-.venv/bin/htbcli machines submit "flag{abc123def456}"
+echo "flag{abc123def456}" | htbcli machines submit
+htbcli machines submit "flag{abc123def456}"
 
 # Submit flag using machine ID
-.venv/bin/htbcli machines submit 12345 "flag{abc123def456}"
+htbcli machines submit 12345 "flag{abc123def456}"
 
 # Submit flag using machine name
-.venv/bin/htbcli machines submit "machine-name" "flag{abc123def456}"
+htbcli machines submit "machine-name" "flag{abc123def456}"
 
 # Submit flag piped from stdin to specific machine
-echo "flag{abc123def456}" | .venv/bin/htbcli machines submit "machine-name"
+echo "flag{abc123def456}" | htbcli machines submit "machine-name"
 
 # Submit flag from environment variable to active machine
-echo $FLAG | .venv/bin/htbcli machines submit
+echo $FLAG | htbcli machines submit
 ```
 
 ### Get User Profile
 ```bash
-.venv/bin/htbcli user profile 12345
+htbcli user profile 12345
+# or
+uv run htbcli user profile 12345
 ```
 
 ### VM Operations
 ```bash
 # Spawn a VM for machine ID 123
-.venv/bin/htbcli vm spawn 123
+htbcli vm spawn 123
+# or
+uv run htbcli vm spawn 123
 
 # Extend VM time for machine ID 123
-.venv/bin/htbcli vm extend 123
+htbcli vm extend 123
+# or
+uv run htbcli vm extend 123
 
 # Reset VM for machine ID 123
-.venv/bin/htbcli vm reset 123
+htbcli vm reset 123
+# or
+uv run htbcli vm reset 123
 
 # Terminate VM for machine ID 123
-.venv/bin/htbcli vm terminate 123
+htbcli vm terminate 123
+# or
+uv run htbcli vm terminate 123
 
 # Vote to reset VM for machine ID 123
-.venv/bin/htbcli vm vote-reset 123
+htbcli vm vote-reset 123
+# or
+uv run htbcli vm vote-reset 123
 
 # Accept reset vote for machine ID 123
-.venv/bin/htbcli vm accept-vote 123
+htbcli vm accept-vote 123
+# or
+uv run htbcli vm accept-vote 123
 ```
 
 ### VPN Management
 ```bash
 # List available VPN servers
-.venv/bin/htbcli vpn list
+htbcli vpn list
+# or
+uv run htbcli vpn list
 
 # Download all VPN configurations
-.venv/bin/htbcli vpn download
+htbcli vpn download
+# or
+uv run htbcli vpn download
 
 # List downloaded VPN files
-.venv/bin/htbcli vpn files
+htbcli vpn files
+# or
+uv run htbcli vpn files
 
 # Start VPN connection (requires sudo)
-.venv/bin/htbcli vpn start "EU VIP 7" --mode udp
+htbcli vpn start "EU VIP 7" --mode udp
+# or
+uv run htbcli vpn start "EU VIP 7" --mode udp
 
 # Stop VPN connection
-.venv/bin/htbcli vpn stop
+htbcli vpn stop
+# or
+uv run htbcli vpn stop
 
 # Get VPN connection status
-.venv/bin/htbcli vpn status
+htbcli vpn status
+# or
+uv run htbcli vpn status
 ```
 
 **Note**: VPN operations require OpenVPN to be installed and may require sudo privileges.
@@ -312,15 +424,21 @@ echo $FLAG | .venv/bin/htbcli machines submit
 ### Get VM Status
 ```bash
 # Get active machine and VM status
-.venv/bin/htbcli machines active
+htbcli machines active
+# or
+uv run htbcli machines active
 
 # Get VM status (alias)
-.venv/bin/htbcli machines vm-status
+htbcli machines vm-status
+# or
+uv run htbcli machines vm-status
 ```
 
 ### List All Available Endpoints
 ```bash
-.venv/bin/htbcli endpoints
+htbcli endpoints
+# or
+uv run htbcli endpoints
 ```
 
 ## Error Handling
@@ -369,9 +487,11 @@ htbcli/
 
 ```bash
 # Install test dependencies
-pip install pytest
+uv add pytest
 
 # Run tests
+uv run pytest
+# or
 pytest
 ```
 

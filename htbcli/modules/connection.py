@@ -43,9 +43,9 @@ class ConnectionModule:
         """Get last set connections"""
         return self.api.get("/connections")
     
-    def get_connections_servers(self) -> Dict[str, Any]:
+    def get_connections_servers(self, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Get list of VPN servers"""
-        return self.api.get("/connections/servers")
+        return self.api.get("/connections/servers", params=params)
     
     def get_connections_servers_prolab(self, prolab_id: int) -> Dict[str, Any]:
         """Get prolab VPN servers"""
