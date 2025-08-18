@@ -210,6 +210,11 @@ htbcli sherlocks list-sherlocks --page 1 --per-page 20
 # or
 uv run htbcli sherlocks list-sherlocks --page 1 --per-page 20
 
+# List sherlocks with filtering
+htbcli sherlocks list-sherlocks --difficulty easy --state active --sort-by rating
+# or
+uv run htbcli sherlocks list-sherlocks --difficulty easy --state active --sort-by rating
+
 # Get sherlock categories
 htbcli sherlocks categories
 # or
@@ -284,6 +289,103 @@ htbcli sherlocks writeup-official "brutus"
 # or
 uv run htbcli sherlocks writeup-official 123
 uv run htbcli sherlocks writeup-official "brutus"
+```
+
+### Advanced Filtering Examples
+
+The CLI supports powerful filtering and sorting options for listing machines and challenges:
+
+#### Machine Filtering
+
+```bash
+# Filter machines by difficulty, sort by rating (ascending), show only retired machines
+htbcli machines list-machines --difficulty easy --sort-type asc --sort-by rating --status retired --show-completed incomplete
+
+# Filter by multiple criteria
+htbcli machines list-machines --difficulty medium --os linux --status active --sort-by difficulty --sort-type desc
+
+# Show only machines you haven't completed
+htbcli machines list-machines --show-completed incomplete --status active
+
+# Filter by OS and difficulty
+htbcli machines list-machines --os windows --difficulty hard --status retired
+
+# Sort by different criteria
+htbcli machines list-machines --sort-by name --sort-type asc --status active
+htbcli machines list-machines --sort-by rating --sort-type desc --difficulty easy
+```
+
+#### Challenge Filtering
+
+```bash
+# Filter challenges by category, difficulty, and completion status
+htbcli challenges list-challenges --state active --difficulty medium --status incompleted --category web
+
+# Filter by multiple categories
+htbcli challenges list-challenges --category web --category crypto --difficulty easy
+
+# Show only challenges you haven't solved
+htbcli challenges list-challenges --status incompleted --difficulty hard
+
+# Filter by state and difficulty
+htbcli challenges list-challenges --state active --difficulty medium --sort-by rating --sort-type desc
+
+# Show challenges by specific category
+htbcli challenges list-challenges --category pwn --difficulty medium --status incompleted
+```
+
+#### Sherlock Filtering
+
+```bash
+# Filter sherlocks by difficulty and state
+htbcli sherlocks list-sherlocks --difficulty easy --state active --sort-by rating --sort-type desc
+
+# Filter by multiple difficulties
+htbcli sherlocks list-sherlocks --difficulty easy --difficulty medium --state active
+
+# Filter by category (use category IDs from categories command)
+htbcli sherlocks list-sherlocks --category 1 --category 2 --difficulty medium
+
+# Show only completed sherlocks
+htbcli sherlocks list-sherlocks --status completed --sort-by solves --sort-type desc
+
+# Search by keyword
+htbcli sherlocks list-sherlocks --keyword "web" --difficulty medium --state active
+
+# Show only todo items
+htbcli sherlocks list-sherlocks --todo --difficulty easy
+
+# Complex filtering with multiple criteria
+htbcli sherlocks list-sherlocks --difficulty medium --state active --status incompleted --sort-by rating --sort-type desc
+```
+
+#### Available Filter Options
+
+**For Machines:**
+- `--difficulty`: easy, medium, hard, insane
+- `--os`: linux, windows, openbsd, solaris, freebsd, other
+- `--status`: active, retired, all
+- `--show-completed`: completed, incomplete, all
+- `--sort-by`: name, difficulty, rating, release_date, user_rating
+- `--sort-type`: asc, desc
+
+**For Challenges:**
+- `--difficulty`: easy, medium, hard, insane
+- `--category`: web, crypto, pwn, forensics, reverse, stego, osint, mobile, hardware, misc
+- `--state`: active, retired, all
+- `--status`: completed, incompleted, all
+- `--sort-by`: name, difficulty, rating, release_date, solves
+- `--sort-type`: asc, desc
+
+**For Sherlocks:**
+- `--difficulty`: very-easy, easy, medium, hard, insane
+- `--state`: active, retired, unreleased
+- `--category`: category ID (use `htbcli sherlocks categories` to see available IDs)
+- `--status`: completed, incompleted
+- `--sort-by`: solves, category, rating, name
+- `--sort-type`: asc, desc
+- `--keyword`: search by keyword
+- `--todo`: show only todo items
 ```
 
 ## Available Modules

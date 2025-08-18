@@ -135,19 +135,63 @@ def sherlocks():
 @sherlocks.command()
 @click.option('--page', default=1, help='Page number')
 @click.option('--per-page', default=20, help='Results per page')
+@click.option('--difficulty', multiple=True, type=click.Choice(['very-easy', 'easy', 'medium', 'hard', 'insane']), help='Filter by difficulty (can be used multiple times)')
+@click.option('--state', multiple=True, type=click.Choice(['active', 'retired', 'unreleased']), help='Filter by state (can be used multiple times)')
+@click.option('--category', multiple=True, type=int, help='Filter by category ID (can be used multiple times)')
+@click.option('--status', type=click.Choice(['completed', 'incompleted']), help='Filter by completion status')
+@click.option('--sort-by', type=click.Choice(['solves', 'category', 'rating', 'name']), help='Sort by field')
+@click.option('--sort-type', type=click.Choice(['asc', 'desc']), default='asc', help='Sort order')
+@click.option('--keyword', help='Search by keyword')
+@click.option('--todo', is_flag=True, help='Show only todo items')
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def list_sherlocks(page, per_page, responses, option):
-    """List sherlocks"""
+def list_sherlocks(page, per_page, difficulty, state, category, status, sort_by, sort_type, keyword, todo, responses, option):
+    """List sherlocks with filtering and sorting options"""
     try:
         api_client = HTBAPIClient()
         sherlocks_module = SherlocksModule(api_client)
-        result = sherlocks_module.get_sherlocks_list(page, per_page)
+        
+        # Build parameters for filtering
+        params = {
+            'page': page,
+            'per_page': per_page
+        }
+        
+        # Add filtering parameters
+        if difficulty:
+            params['difficulty[]'] = list(difficulty)
+        if state:
+            params['state'] = list(state)
+        if category:
+            params['category[]'] = list(category)
+        if status:
+            params['status'] = status
+        if sort_by:
+            params['sort_by'] = sort_by
+        if sort_type:
+            params['sort_type'] = sort_type
+        if keyword:
+            params['keyword'] = keyword
+        if todo:
+            params['todo'] = 1
+        
+        result = sherlocks_module.get_sherlocks_list(page, per_page, **params)
         
         if result and 'data' in result:
             sherlocks_data = result['data']
             
-            table = Table(title=f"Sherlocks (Page {page})")
+            # Build title with filter info
+            title_parts = [f"Sherlocks (Page {page})"]
+            if difficulty:
+                title_parts.append(f"Difficulty: {', '.join(difficulty)}")
+            if state:
+                title_parts.append(f"State: {', '.join(state)}")
+            if status:
+                title_parts.append(f"Status: {status}")
+            if sort_by:
+                title_parts.append(f"Sorted by: {sort_by} ({sort_type})")
+            
+            table = Table(title=" | ".join(title_parts))
             table.add_column("ID", style="cyan")
             table.add_column("Name", style="green")
             table.add_column("Category", style="yellow")
