@@ -226,20 +226,13 @@ _htbcli_arguments() {
             ;;
         subargs)
             # Route to specific completion functions based on command and subcommand
-            case "$words[1]:$words[2]" in
-                machines:list-machines)
-                    _htbcli_machines_list
-                    ;;
-                machines:retired-list)
-                    _htbcli_machines_retired_list
-                    ;;
-                challenges:list-challenges)
-                    _htbcli_challenges_list
-                    ;;
-                *)
-                    _htbcli_subarguments
-                    ;;
-            esac
+            if [[ "$words[1]" == "machines" ]]; then
+                _htbcli_machines_list
+            elif [[ "$words[1]" == "challenges" ]]; then
+                _htbcli_challenges_list
+            else
+                _htbcli_subarguments
+            fi
             ;;
     esac
 }
@@ -458,60 +451,117 @@ _htbcli_subarguments() {
 
 # Enhanced completion for specific commands with option values
 _htbcli_machines_list() {
-    _arguments \
+    _arguments -C \
         '--help[Show help]' \
         '--debug[Show debug info]' \
         '--json[Output as JSON]' \
         '--page[Page number]:page number:' \
         '--per-page[Results per page]:per page:' \
-        '--status[Status filter]:(active retired)' \
-        '--sort-by[Sort by field]:(release-date name user-owns system-owns rating user-difficulty)' \
-        '--sort-type[Sort type]:(asc desc)' \
-        '--difficulty[Difficulty filter]:(very-easy easy medium hard insane)' \
-        '--os[OS filter]:(linux windows freebsd openbsd other)' \
+        '--status[Status filter]:->status_values' \
+        '--sort-by[Sort by field]:->sort_by_values' \
+        '--sort-type[Sort type]:->sort_type_values' \
+        '--difficulty[Difficulty filter]:->difficulty_values' \
+        '--os[OS filter]:->os_values' \
         '--tags[Tags filter]:tag:' \
         '--keyword[Keyword search]:keyword:' \
-        '--show-completed[Show completed items]:(complete incomplete)' \
+        '--show-completed[Show completed items]:->show_completed_values' \
         '--free[Show free items only]' \
         '--responses[Show all response fields]' \
         '--option[Show specific fields]:field:' \
         '-o[Show specific fields]:field:'
+    
+    case $state in
+        status_values)
+            _htbcli_option_values --status
+            ;;
+        sort_by_values)
+            _htbcli_option_values --sort-by
+            ;;
+        sort_type_values)
+            _htbcli_option_values --sort-type
+            ;;
+        difficulty_values)
+            _htbcli_option_values --difficulty
+            ;;
+        os_values)
+            _htbcli_option_values --os
+            ;;
+        show_completed_values)
+            _htbcli_option_values --show-completed
+            ;;
+    esac
 }
 
 _htbcli_machines_retired_list() {
-    _arguments \
+    _arguments -C \
         '--help[Show help]' \
         '--debug[Show debug info]' \
         '--json[Output as JSON]' \
         '--page[Page number]:page number:' \
         '--per-page[Results per page]:per page:' \
-        '--sort-by[Sort by field]:(release-date name user-owns system-owns rating user-difficulty)' \
-        '--sort-type[Sort type]:(asc desc)' \
-        '--difficulty[Difficulty filter]:(very-easy easy medium hard insane)' \
-        '--os[OS filter]:(linux windows freebsd openbsd other)' \
+        '--sort-by[Sort by field]:->sort_by_values' \
+        '--sort-type[Sort type]:->sort_type_values' \
+        '--difficulty[Difficulty filter]:->difficulty_values' \
+        '--os[OS filter]:->os_values' \
         '--tags[Tags filter]:tag:' \
         '--keyword[Keyword search]:keyword:' \
-        '--show-completed[Show completed items]:(complete incomplete)' \
+        '--show-completed[Show completed items]:->show_completed_values' \
         '--free[Show free items only]'
+    
+    case $state in
+        sort_by_values)
+            _htbcli_option_values --sort-by
+            ;;
+        sort_type_values)
+            _htbcli_option_values --sort-type
+            ;;
+        difficulty_values)
+            _htbcli_option_values --difficulty
+            ;;
+        os_values)
+            _htbcli_option_values --os
+            ;;
+        show_completed_values)
+            _htbcli_option_values --show-completed
+            ;;
+    esac
 }
 
 _htbcli_challenges_list() {
-    _arguments \
+    _arguments -C \
         '--help[Show help]' \
         '--debug[Show debug info]' \
         '--json[Output as JSON]' \
         '--page[Page number]:page number:' \
         '--per-page[Results per page]:per page:' \
-        '--status[Status filter]:(incompleted complete)' \
-        '--state[State filter]:(active retired unreleased)' \
-        '--sort-by[Sort by field]:(release-date name user-owns system-owns rating user-difficulty)' \
-        '--sort-type[Sort type]:(asc desc)' \
-        '--difficulty[Difficulty filter]:(very-easy easy medium hard insane)' \
+        '--status[Status filter]:->status_values' \
+        '--state[State filter]:->state_values' \
+        '--sort-by[Sort by field]:->sort_by_values' \
+        '--sort-type[Sort type]:->sort_type_values' \
+        '--difficulty[Difficulty filter]:->difficulty_values' \
         '--category[Category filter]:category:' \
         '--todo[Show todo items only]' \
         '--responses[Show all response fields]' \
         '--option[Show specific fields]:field:' \
         '-o[Show specific fields]:field:'
+    
+    case $state in
+        status_values)
+            _htbcli_option_values --status
+            ;;
+        state_values)
+            _htbcli_option_values --state
+            ;;
+        sort_by_values)
+            _htbcli_option_values --sort-by
+            ;;
+        sort_type_values)
+            _htbcli_option_values --sort-type
+            ;;
+        difficulty_values)
+            _htbcli_option_values --difficulty
+            ;;
+    esac
 }
 
 # Add option value completions
@@ -560,6 +610,11 @@ _htbcli_option_values() {
     fi
 }
 
+# Ensure completion system is loaded
+autoload -Uz compinit
+compinit
+
+# Register completion function
 compdef _htbcli htbcli
 """
 
