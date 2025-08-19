@@ -420,33 +420,30 @@ _htbcli_subcommands() {
 }
 
 _htbcli_subarguments() {
-    local arguments
-    arguments=(
-        '--help:Show help'
-        '--debug:Show debug info'
-        '--json:Output as JSON'
-        '--responses:Show all response fields'
-        '--option:Show specific fields'
-        '-o:Show specific fields'
-        '--page:Page number'
-        '--per-page:Results per page'
-        '--sort-by:Sort by field'
-        '--sort-type:Sort type'
-        '--difficulty:Difficulty filter'
-        '--os:OS filter'
-        '--tags:Tags filter'
-        '--keyword:Keyword search'
-        '--show-completed:Show completed items'
-        '--free:Show free items only'
-        '--status:Status filter'
-        '--state:State filter'
-        '--category:Category filter'
-        '--todo:Show todo items only'
-        '--max-pages:Maximum pages to search'
-        '--output:Output file'
-        '--count-only:Show count only'
-    )
-    _describe -t arguments 'htbcli arguments' arguments
+    _arguments \
+        '--help[Show help]' \
+        '--debug[Show debug info]' \
+        '--json[Output as JSON]' \
+        '--page[Page number]:page number:' \
+        '--per-page[Results per page]:per page:' \
+        '--sort-by[Sort by field]:field:(release-date name user-owns system-owns rating user-difficulty)' \
+        '--sort-type[Sort type]:order:(asc desc)' \
+        '--difficulty[Difficulty filter]:difficulty:(very-easy easy medium hard insane)' \
+        '--os[OS filter]:os:(linux windows freebsd openbsd other)' \
+        '--tags[Tags filter]:tag:' \
+        '--keyword[Keyword search]:keyword:' \
+        '--show-completed[Show completed items]:completed:(complete incomplete)' \
+        '--free[Show free items only]' \
+        '--status[Status filter]:status:(active retired incompleted complete)' \
+        '--state[State filter]:state:(active retired unreleased)' \
+        '--category[Category filter]:category:' \
+        '--todo[Show todo items only]' \
+        '--max-pages[Maximum pages to search]:pages:' \
+        '--output[Output file]:file:_files' \
+        '--count-only[Show count only]' \
+        '--responses[Show all response fields]' \
+        '--option[Show specific fields]:field:' \
+        '-o[Show specific fields]:field:'
 }
 
 # Enhanced completion for specific commands with option values
@@ -457,38 +454,20 @@ _htbcli_machines_list() {
         '--json[Output as JSON]' \
         '--page[Page number]:page number:' \
         '--per-page[Results per page]:per page:' \
-        '--status[Status filter]:->status_values' \
-        '--sort-by[Sort by field]:->sort_by_values' \
-        '--sort-type[Sort type]:->sort_type_values' \
-        '--difficulty[Difficulty filter]:->difficulty_values' \
-        '--os[OS filter]:->os_values' \
+        '--status[Status filter]:status:(active retired)' \
+        '--sort-by[Sort by field]:field:(release-date name user-owns system-owns rating user-difficulty)' \
+        '--sort-type[Sort type]:order:(asc desc)' \
+        '--difficulty[Difficulty filter]:difficulty:(very-easy easy medium hard insane)' \
+        '--os[OS filter]:os:(linux windows freebsd openbsd other)' \
         '--tags[Tags filter]:tag:' \
         '--keyword[Keyword search]:keyword:' \
-        '--show-completed[Show completed items]:->show_completed_values' \
+        '--show-completed[Show completed items]:completed:(complete incomplete)' \
         '--free[Show free items only]' \
         '--responses[Show all response fields]' \
         '--option[Show specific fields]:field:' \
         '-o[Show specific fields]:field:'
     
     case $state in
-        status_values)
-            _htbcli_option_values --status
-            ;;
-        sort_by_values)
-            _htbcli_option_values --sort-by
-            ;;
-        sort_type_values)
-            _htbcli_option_values --sort-type
-            ;;
-        difficulty_values)
-            _htbcli_option_values --difficulty
-            ;;
-        os_values)
-            _htbcli_option_values --os
-            ;;
-        show_completed_values)
-            _htbcli_option_values --show-completed
-            ;;
     esac
 }
 
@@ -499,31 +478,16 @@ _htbcli_machines_retired_list() {
         '--json[Output as JSON]' \
         '--page[Page number]:page number:' \
         '--per-page[Results per page]:per page:' \
-        '--sort-by[Sort by field]:->sort_by_values' \
-        '--sort-type[Sort type]:->sort_type_values' \
-        '--difficulty[Difficulty filter]:->difficulty_values' \
-        '--os[OS filter]:->os_values' \
+        '--sort-by[Sort by field]:field:(release-date name user-owns system-owns rating user-difficulty)' \
+        '--sort-type[Sort type]:order:(asc desc)' \
+        '--difficulty[Difficulty filter]:difficulty:(very-easy easy medium hard insane)' \
+        '--os[OS filter]:os:(linux windows freebsd openbsd other)' \
         '--tags[Tags filter]:tag:' \
         '--keyword[Keyword search]:keyword:' \
-        '--show-completed[Show completed items]:->show_completed_values' \
+        '--show-completed[Show completed items]:completed:(complete incomplete)' \
         '--free[Show free items only]'
     
     case $state in
-        sort_by_values)
-            _htbcli_option_values --sort-by
-            ;;
-        sort_type_values)
-            _htbcli_option_values --sort-type
-            ;;
-        difficulty_values)
-            _htbcli_option_values --difficulty
-            ;;
-        os_values)
-            _htbcli_option_values --os
-            ;;
-        show_completed_values)
-            _htbcli_option_values --show-completed
-            ;;
     esac
 }
 
@@ -534,11 +498,11 @@ _htbcli_challenges_list() {
         '--json[Output as JSON]' \
         '--page[Page number]:page number:' \
         '--per-page[Results per page]:per page:' \
-        '--status[Status filter]:->status_values' \
-        '--state[State filter]:->state_values' \
-        '--sort-by[Sort by field]:->sort_by_values' \
-        '--sort-type[Sort type]:->sort_type_values' \
-        '--difficulty[Difficulty filter]:->difficulty_values' \
+        '--status[Status filter]:status:(incompleted complete)' \
+        '--state[State filter]:state:(active retired unreleased)' \
+        '--sort-by[Sort by field]:field:(release-date name user-owns system-owns rating user-difficulty)' \
+        '--sort-type[Sort type]:order:(asc desc)' \
+        '--difficulty[Difficulty filter]:difficulty:(very-easy easy medium hard insane)' \
         '--category[Category filter]:category:' \
         '--todo[Show todo items only]' \
         '--responses[Show all response fields]' \
@@ -546,21 +510,6 @@ _htbcli_challenges_list() {
         '-o[Show specific fields]:field:'
     
     case $state in
-        status_values)
-            _htbcli_option_values --status
-            ;;
-        state_values)
-            _htbcli_option_values --state
-            ;;
-        sort_by_values)
-            _htbcli_option_values --sort-by
-            ;;
-        sort_type_values)
-            _htbcli_option_values --sort-type
-            ;;
-        difficulty_values)
-            _htbcli_option_values --difficulty
-            ;;
     esac
 }
 
