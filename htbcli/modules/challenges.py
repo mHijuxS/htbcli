@@ -4,7 +4,7 @@ Challenges module for HTB CLI
 
 import click
 import sys
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional, Union, List
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -80,6 +80,60 @@ class ChallengesModule:
             return None
         except Exception:
             return None
+    
+    def get_active_challenges(self) -> List[Dict[str, Any]]:
+        """Get list of active challenge instances"""
+        active_challenges = []
+        
+        try:
+            # Search through challenges to find active instances
+            for page in range(1, 3):  # Limit to first 2 pages to avoid rate limits
+                result = self.get_challenges(page=page, per_page=20)
+                
+                if not result or 'data' not in result:
+                    continue
+                
+                challenges = result['data']
+                if not challenges:
+                    continue
+                
+                # Check each challenge for active instances
+                for challenge in challenges:
+                    challenge_id = challenge.get('id')
+                    if challenge_id:
+                        try:
+                            # Get detailed challenge info to check for active instances
+                            challenge_info = self.get_challenge_info_by_id(challenge_id)
+                            if challenge_info and 'challenge' in challenge_info:
+                                challenge_data = challenge_info['challenge']
+                                
+                                # Check if challenge has an active instance
+                                if challenge_data.get('docker_status') == 'ready' and challenge_data.get('docker_ip'):
+                                    active_challenges.append({
+                                        'id': challenge_id,
+                                        'name': challenge_data.get('name', 'N/A'),
+                                        'difficulty': challenge_data.get('difficulty', 'N/A'),
+                                        'category': challenge_data.get('category_name', 'N/A'),
+                                        'ip': challenge_data.get('docker_ip', 'N/A'),
+                                        'ports': challenge_data.get('docker_ports', []),
+                                        'status': challenge_data.get('docker_status', 'N/A')
+                                    })
+                        except Exception:
+                            # Skip challenges that can't be checked
+                            continue
+                            
+                        # Limit to avoid rate limits - only check first few challenges
+                        if len(active_challenges) >= 5:
+                            break
+                    
+                    # Limit to avoid rate limits
+                    if len(active_challenges) >= 5:
+                        break
+                        
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not check all challenges due to rate limits: {e}[/yellow]")
+        
+        return active_challenges
     
     def submit_challenge_flag(self, flag: str, challenge_id: int, difficulty: int) -> Dict[str, Any]:
         """Submit flag for challenge"""
@@ -1026,6 +1080,92 @@ def stop(challenge_identifier, debug, json_output):
             ))
         else:
             console.print("[yellow]No stop result[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@challenges.command()
+@click.argument('challenge_identifier', required=False)
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def active(challenge_identifier, debug, json_output):
+    """Show active challenge instances or check if a specific challenge is active
+    
+    If no challenge identifier is provided, it will search through challenges to find active instances.
+    Note: This may hit API rate limits when checking all challenges. For best results, specify a challenge name/ID.
+    
+    Examples:
+    - htbcli challenges active "resourcehub core"  # Check specific challenge
+    - htbcli challenges active                     # Check all (may hit rate limits)
+    """
+    try:
+        api_client = HTBAPIClient()
+        challenges_module = ChallengesModule(api_client)
+        
+        if challenge_identifier:
+            # Check if a specific challenge is active
+            challenge_id = challenges_module.resolve_challenge_id(challenge_identifier)
+            if challenge_id is None:
+                return
+            
+            challenge_info = challenges_module.get_challenge_info_by_id(challenge_id)
+            
+            if debug or json_output:
+                handle_debug_option(debug, challenge_info, "Debug: Challenge Info", json_output)
+                return
+            
+            if challenge_info and 'challenge' in challenge_info:
+                challenge_data = challenge_info['challenge']
+                
+                if challenge_data.get('docker_status') == 'ready' and challenge_data.get('docker_ip'):
+                    console.print(Panel.fit(
+                        f"[bold green]Active Challenge Instance[/bold green]\n"
+                        f"Challenge ID: {challenge_id}\n"
+                        f"Name: {challenge_data.get('name', 'N/A')}\n"
+                        f"Difficulty: {challenge_data.get('difficulty', 'N/A')}\n"
+                        f"Category: {challenge_data.get('category_name', 'N/A')}\n"
+                        f"IP: {challenge_data.get('docker_ip', 'N/A')}\n"
+                        f"Ports: {challenge_data.get('docker_ports', 'N/A')}\n"
+                        f"Status: {challenge_data.get('docker_status', 'N/A')}",
+                        title="Active Challenge"
+                    ))
+                else:
+                    console.print("[yellow]No active instance found for this challenge[/yellow]")
+            else:
+                console.print("[red]Could not retrieve challenge information[/red]")
+        else:
+            # Show all active challenges (limited to avoid rate limits)
+            active_challenges = challenges_module.get_active_challenges()
+            
+            if debug or json_output:
+                handle_debug_option(debug, {'active_challenges': active_challenges}, "Debug: Active Challenges", json_output)
+                return
+            
+            if active_challenges:
+                table = Table(title="Active Challenge Instances")
+                table.add_column("ID", style="cyan")
+                table.add_column("Name", style="green")
+                table.add_column("Difficulty", style="yellow")
+                table.add_column("Category", style="magenta")
+                table.add_column("IP", style="blue")
+                table.add_column("Ports", style="red")
+                table.add_column("Status", style="white")
+                
+                for challenge in active_challenges:
+                    ports_str = ', '.join(map(str, challenge['ports'])) if challenge['ports'] else 'N/A'
+                    table.add_row(
+                        str(challenge['id']),
+                        challenge['name'],
+                        challenge['difficulty'],
+                        challenge['category'],
+                        challenge['ip'],
+                        ports_str,
+                        challenge['status']
+                    )
+                
+                console.print(table)
+            else:
+                console.print("[yellow]No active challenge instances found[/yellow]")
+                
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
