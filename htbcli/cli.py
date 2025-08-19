@@ -2,6 +2,7 @@
 Main CLI entry point for HTB CLI
 """
 
+import os
 import click
 from rich.console import Console
 from rich.panel import Panel
@@ -11,6 +12,7 @@ from rich import print as rprint
 from . import __version__
 from .config import Config
 from .swagger_parser import SwaggerParser
+from .completion import get_completion_suggestions
 from .modules import (
     machines, challenges, user, season, sherlocks,
     badges, career, connection, fortresses, home,
@@ -30,6 +32,13 @@ def cli():
     Make sure to set your HTB_TOKEN environment variable before using.
     """
     pass
+
+def complete_commands(ctx, args, incomplete):
+    """Auto-completion function for commands and arguments"""
+    return get_completion_suggestions(ctx, args, incomplete)
+
+# Add completion to the CLI group
+cli.completion_function = complete_commands
 
 # Add all module commands
 cli.add_command(machines)
@@ -139,6 +148,54 @@ def setup():
         ))
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
+
+@cli.command()
+@click.option('--shell', type=click.Choice(['bash', 'zsh']), help='Generate completion for specific shell')
+@click.option('--raw', is_flag=True, help='Output raw completion script without formatting')
+def completion(shell, raw):
+    """Generate shell completion script"""
+    try:
+        # Determine shell if not specified
+        if not shell:
+            shell = os.environ.get('SHELL', '').split('/')[-1]
+            if shell not in ['bash', 'zsh']:
+                if raw:
+                    print(f"Error: Shell '{shell}' not supported. Please specify --shell bash or --shell zsh")
+                else:
+                    console.print(f"[yellow]Shell '{shell}' not supported. Please specify --shell bash or --shell zsh[/yellow]")
+                return
+        
+        # Import and use the completion script generator
+        from .completion_script import generate_bash_completion, generate_zsh_completion
+        
+        if shell == 'bash':
+            script = generate_bash_completion()
+        elif shell == 'zsh':
+            script = generate_zsh_completion()
+        else:
+            if raw:
+                print(f"Error: Shell '{shell}' not supported. Please use bash or zsh.")
+            else:
+                console.print(f"[yellow]Shell '{shell}' not supported. Please use bash or zsh.[/yellow]")
+            return
+        
+        if raw:
+            # Output raw script for sourcing
+            print(script)
+        else:
+            # Output formatted help
+            console.print(Panel.fit(
+                f"[bold green]HTB CLI {shell.title()} Completion Script[/bold green]\n"
+                f"Add the following to your ~/.{shell}rc file:\n\n"
+                f"[code]{script}[/code]\n\n"
+                f"Or run: source <(htbcli completion --shell {shell} --raw) to add it temporarily",
+                title="Shell Completion Setup"
+            ))
+    except Exception as e:
+        if raw:
+            print(f"Error: {e}")
+        else:
+            console.print(f"[red]Error: {e}[/red]")
 
 if __name__ == '__main__':
     cli()

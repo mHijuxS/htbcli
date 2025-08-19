@@ -3,6 +3,7 @@ Challenges module for HTB CLI
 """
 
 import click
+import sys
 from typing import Dict, Any, Optional, Union
 from rich.console import Console
 from rich.table import Table
@@ -39,9 +40,9 @@ class ChallengesModule:
         """Get challenge info by slug"""
         return self.api.get(f"/challenge/info/{challenge_slug}")
     
-    def submit_challenge_flag(self, flag: str) -> Dict[str, Any]:
+    def submit_challenge_flag(self, flag: str, challenge_id: int, difficulty: int) -> Dict[str, Any]:
         """Submit flag for challenge"""
-        return self.api.post("/challenge/own", json_data={"flag": flag})
+        return self.api.post("/challenge/own", json_data={"flag": flag, "challenge_id": challenge_id, "difficulty": difficulty})
     
     def get_challenge_recommended(self) -> Dict[str, Any]:
         """Get recommended challenges"""
@@ -449,19 +450,65 @@ def info(challenge_slug, responses, option):
 @challenges.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
-
-@click.argument('flag')
-def submit(flag, debug, json_output):
-    """Submit flag for challenge"""
+@click.argument('challenge_identifier')
+@click.argument('flag', required=False)
+def submit(challenge_identifier, flag, debug, json_output):
+    """Submit flag for challenge (accepts challenge ID or name). Flag can be provided as argument or piped from stdin."""
     try:
         api_client = HTBAPIClient()
         challenges_module = ChallengesModule(api_client)
-        result = challenges_module.submit_challenge_flag(flag)
+        
+        # Resolve challenge identifier to challenge ID
+        challenge_id = challenges_module.resolve_challenge_id(challenge_identifier)
+        if challenge_id is None:
+            console.print(f"[red]Could not resolve challenge identifier: {challenge_identifier}[/red]")
+            return
+        
+        # Get challenge info to get difficulty
+        challenge_info = challenges_module.get_challenge_info(str(challenge_id))
+        if not challenge_info or ('info' not in challenge_info and 'challenge' not in challenge_info):
+            console.print(f"[red]Could not get challenge info for ID: {challenge_id}[/red]")
+            return
+        
+        info = challenge_info.get('info') or challenge_info.get('challenge')
+        difficulty = info.get('difficulty')
+        if difficulty is None:
+            console.print(f"[red]Could not get difficulty for challenge ID: {challenge_id}[/red]")
+            return
+        
+        # Convert difficulty string to integer if needed
+        if isinstance(difficulty, str):
+            difficulty_map = {
+                'Very Easy': 10,
+                'Easy': 20,
+                'Medium': 30,
+                'Hard': 40,
+                'Insane': 50
+            }
+            difficulty = difficulty_map.get(difficulty, 30)  # Default to Medium if unknown
+        
+        # Get flag from argument or stdin
+        if flag is None:
+            # Read from stdin
+            if not sys.stdin.isatty():
+                flag = sys.stdin.read().strip()
+                if not flag:
+                    console.print("[red]No flag provided via stdin[/red]")
+                    return
+            else:
+                console.print("[red]No flag provided. Use: htbcli challenges submit <challenge> <flag> or pipe flag via stdin[/red]")
+                return
+        
+        result = challenges_module.submit_challenge_flag(flag, challenge_id, difficulty)
+        
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: Challenge Flag Submission", json_output)
+            return
         
         if result:
             console.print(Panel.fit(
                 f"[bold green]Flag Submission Result[/bold green]\n"
-                f"Status: {result.get('status', 'N/A') or 'N/A'}\n"
+                f"Challenge ID: {challenge_id}\n"
                 f"Message: {result.get('message', 'N/A') or 'N/A'}",
                 title="Flag Submission"
             ))

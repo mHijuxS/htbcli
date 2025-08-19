@@ -9,6 +9,7 @@ A comprehensive command-line interface for the HackTheBox API, providing easy ac
 - **Easy Setup**: Simple configuration with environment variables
 - **Comprehensive Coverage**: Supports all major HTB API endpoints
 - **Interactive**: User-friendly command-line interface
+- **Auto-completion**: Full shell completion support for bash and zsh (similar to Netexec)
 
 ## Installation
 
@@ -67,6 +68,69 @@ HTB_TOKEN=your_token_here
 ```bash
 htbcli info
 ```
+
+## Auto-completion Setup
+
+HTB CLI includes comprehensive auto-completion support for bash and zsh, similar to Netexec. This provides intelligent command and option suggestions as you type.
+
+### Quick Setup
+
+```bash
+# Run the auto-completion installer
+./install_completion.sh
+
+# Or manually generate and source completion
+source <(htbcli completion --shell bash --raw)  # For bash
+source <(htbcli completion --shell zsh --raw)   # For zsh
+```
+
+### Manual Setup
+
+1. **Generate completion script:**
+   ```bash
+   htbcli completion --shell bash  # For bash (shows formatted output)
+   htbcli completion --shell zsh   # For zsh (shows formatted output)
+   htbcli completion --shell bash --raw  # For bash (raw output for sourcing)
+   htbcli completion --shell zsh --raw   # For zsh (raw output for sourcing)
+   ```
+
+2. **Add to your shell config:**
+   - For bash: Add the output to `~/.bashrc`
+   - For zsh: Add the output to `~/.zshrc`
+
+3. **Reload your shell:**
+   ```bash
+   source ~/.bashrc  # For bash
+   source ~/.zshrc   # For zsh
+   ```
+
+### Usage Examples
+
+Once installed, you can use TAB completion:
+
+```bash
+# Complete main commands
+htbcli [TAB]                    # Shows: machines, challenges, user, season, etc.
+
+# Complete subcommands
+htbcli machines [TAB]           # Shows: list, active, info, submit, etc.
+htbcli challenges [TAB]         # Shows: list-challenges, info, submit, etc.
+
+# Complete options
+htbcli machines list --[TAB]    # Shows: --help, --debug, --json, etc.
+htbcli machines list --difficulty [TAB]  # Shows: very-easy, easy, medium, hard, insane
+
+# Complete choice options
+htbcli machines list --os [TAB] # Shows: linux, windows, freebsd, openbsd, other
+```
+
+### Features
+
+- **Command completion**: All main commands and subcommands
+- **Option completion**: All available flags and options
+- **Choice completion**: Predefined choices for options like difficulty, OS, etc.
+- **Context-aware**: Suggestions change based on current command context
+- **Descriptive**: Zsh completion includes descriptions for commands
 
 ## Usage
 
