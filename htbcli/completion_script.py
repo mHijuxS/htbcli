@@ -434,7 +434,7 @@ _htbcli_subarguments() {
         '--keyword[Keyword search]:keyword:' \
         '--show-completed[Show completed items]:completed:(complete incomplete)' \
         '--free[Show free items only]' \
-        '--status[Status filter]:status:(active retired incompleted complete)' \
+        '--status[Status filter]:status:(incompleted complete)' \
         '--state[State filter]:state:(active retired unreleased)' \
         '--category[Category filter]:category:' \
         '--todo[Show todo items only]' \
@@ -508,9 +508,6 @@ _htbcli_challenges_list() {
         '--responses[Show all response fields]' \
         '--option[Show specific fields]:field:' \
         '-o[Show specific fields]:field:'
-    
-    case $state in
-    esac
 }
 
 # Add option value completions

@@ -40,6 +40,47 @@ class ChallengesModule:
         """Get challenge info by slug"""
         return self.api.get(f"/challenge/info/{challenge_slug}")
     
+    def get_challenge_info_by_id(self, challenge_id: int) -> Dict[str, Any]:
+        """Get challenge info by ID by searching through challenges list to find the slug, then get detailed info"""
+        try:
+            # First, search through challenges list to find the challenge slug
+            for page in range(1, 6):  # Search first 5 pages
+                result = self.get_challenges(page=page, per_page=20)
+                
+                if not result or 'data' not in result:
+                    continue
+                
+                challenges = result['data']
+                if not challenges:
+                    continue
+                
+                # Search through challenges on this page
+                for challenge in challenges:
+                    if challenge.get('id') == challenge_id:
+                        # Found the challenge, now get detailed info using the slug
+                        # Try to get slug from different possible fields
+                        slug = challenge.get('url_name') or challenge.get('slug')
+                        
+                        # If no slug field, generate one from the name
+                        if not slug and challenge.get('name'):
+                            slug = challenge.get('name').lower().replace(' ', '-').replace('_', '-')
+                        
+                        if slug:
+                            try:
+                                # Use the actual challenge info API endpoint
+                                detailed_info = self.get_challenge_info(slug)
+                                return detailed_info
+                            except Exception:
+                                # If API call fails, fallback to challenges list data
+                                return {'data': challenge}
+                        else:
+                            # Fallback to challenges list data
+                            return {'data': challenge}
+            
+            return None
+        except Exception:
+            return None
+    
     def submit_challenge_flag(self, flag: str, challenge_id: int, difficulty: int) -> Dict[str, Any]:
         """Submit flag for challenge"""
         return self.api.post("/challenge/own", json_data={"flag": flag, "challenge_id": challenge_id, "difficulty": difficulty})
@@ -901,12 +942,56 @@ def start(challenge_identifier, debug, json_output):
             
         result = challenges_module.start_challenge(challenge_id)
         
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: Challenge Start", json_output)
+            return
+        
         if result:
+            # Get challenge details to show more information
+            challenge_info = challenges_module.get_challenge_info_by_id(challenge_id)
+            
+
+            
+            # Build the output panel with challenge details
+            output_lines = [
+                f"[bold green]Challenge Start[/bold green]",
+                f"Challenge ID: {challenge_id}",
+                f"Instance ID: {result.get('id', 'N/A') or 'N/A'}",
+                f"Status: {result.get('status', 'N/A') or 'N/A'}",
+                f"Message: {result.get('message', 'N/A') or 'N/A'}"
+            ]
+            
+            # Add challenge details if available
+            if challenge_info:
+                # Check if it has 'challenge' key (from challenge info API) or 'data' key (from challenges list)
+                if 'challenge' in challenge_info:
+                    challenge_data = challenge_info['challenge']
+                elif 'data' in challenge_info:
+                    challenge_data = challenge_info['data']
+                else:
+                    challenge_data = challenge_info
+                output_lines.extend([
+                    "",
+                    f"[bold cyan]Challenge Details:[/bold cyan]",
+                    f"Name: {challenge_data.get('name', 'N/A') or 'N/A'}",
+                    f"Difficulty: {challenge_data.get('difficulty', 'N/A') or 'N/A'}",
+                    f"Category: {challenge_data.get('category_name', 'N/A') or 'N/A'}",
+                    f"Points: {challenge_data.get('points', 'N/A') or 'N/A'}",
+                    f"State: {challenge_data.get('state', 'N/A') or 'N/A'}"
+                ])
+                
+                # Add Docker connection details if it's a Docker challenge
+                if challenge_data.get('docker'):
+                    output_lines.extend([
+                        "",
+                        f"[bold yellow]Docker Connection Information:[/bold yellow]",
+                        f"IP: {challenge_data.get('docker_ip', 'N/A') or 'N/A'}",
+                        f"Ports: {challenge_data.get('docker_ports', 'N/A') or 'N/A'}",
+                        f"Docker Status: {challenge_data.get('docker_status', 'N/A') or 'N/A'}"
+                    ])
+            
             console.print(Panel.fit(
-                f"[bold green]Challenge Start[/bold green]\n"
-                f"Challenge ID: {challenge_id}\n"
-                f"Status: {result.get('status', 'N/A') or 'N/A'}\n"
-                f"Message: {result.get('message', 'N/A') or 'N/A'}",
+                "\n".join(output_lines),
                 title="Challenge Start"
             ))
         else:
