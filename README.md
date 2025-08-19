@@ -31,16 +31,6 @@ uv tool install .
 uv run htbcli --help
 ```
 
-### Install dependencies only
-
-```bash
-# Using uv (recommended)
-uv add requests click pyyaml rich tabulate python-dotenv
-
-# Or using pip
-pip install requests click pyyaml rich tabulate python-dotenv
-```
-
 ## Configuration
 
 ### 1. Get your API Token
