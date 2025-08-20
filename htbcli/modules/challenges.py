@@ -309,20 +309,38 @@ class ChallengesModule:
                 console.print(f"[yellow]No categories found[/yellow]")
                 return None
             
-            # Search through categories
+            # Search through categories with improved matching logic
+            exact_matches = []
+            partial_matches = []
+            
             for category in categories:
                 name = category.get('name', '').lower()
                 category_id = category.get('id')
-                
-
+                search_term = category_name.lower()
                 
                 # Check for exact match first
-                if name == category_name.lower():
-                    return category_id
+                if name == search_term:
+                    exact_matches.append((category_id, name))
                 
-                # Check for partial match (contains)
-                if category_name.lower() in name:
-                    return category_id
+                # Check for word boundary matches (more precise than simple contains)
+                elif search_term in name:
+                    # Check if it's a word boundary match (not just substring)
+                    # This prevents "pwn" from matching "GamePwn"
+                    words = name.split()
+                    for word in words:
+                        if (search_term == word or 
+                            search_term in word.split('-') or 
+                            search_term in word.split('_')):
+                            partial_matches.append((category_id, name))
+                            break
+            
+            # Return exact match if found
+            if exact_matches:
+                return exact_matches[0][0]
+            
+            # Return first partial match if found
+            if partial_matches:
+                return partial_matches[0][0]
             
             return None
             
@@ -489,12 +507,18 @@ def list_challenges(page, per_page, status, state, sort_by, sort_type, difficult
 @click.argument('challenge_slug')
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def info(challenge_slug, responses, option):
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def info(challenge_slug, responses, option, debug, json_output):
     """Get challenge info by slug"""
     try:
         api_client = HTBAPIClient()
         challenges_module = ChallengesModule(api_client)
         result = challenges_module.get_challenge_info(challenge_slug)
+        
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: Challenge Info", json_output)
+            return
         
         if result and ('info' in result or 'challenge' in result):
             info = result.get('info') or result.get('challenge')
@@ -522,19 +546,64 @@ def info(challenge_slug, responses, option):
                         title=f"Challenge: {challenge_slug} - Selected Fields"
                     ))
             else:
-                # Default view with enhanced information
+                # Default view with enhanced information including play_methods and play_info
+                output_lines = [
+                    f"[bold green]Challenge Info[/bold green]",
+                    f"Name: {info.get('name', 'N/A') or 'N/A'}",
+                    f"Category: {info.get('category_name', 'N/A') or 'N/A'}",
+                    f"Difficulty: {info.get('difficulty', 'N/A') or 'N/A'}",
+                    f"Stars: {info.get('stars', 'N/A') or 'N/A'}",
+                    f"Points: {info.get('points', 'N/A') or 'N/A'}",
+                    f"Solves: {info.get('solves', 'N/A') or 'N/A'}",
+                    f"Reviews Count: {info.get('reviews_count', 'N/A') or 'N/A'}",
+                    f"State: {info.get('state', 'N/A') or 'N/A'}",
+                    f"Release Date: {info.get('release_date', 'N/A') or 'N/A'}",
+                    f"Description: {info.get('description', 'N/A') or 'N/A'}"
+                ]
+                
+                # Add play_methods if available
+                play_methods = info.get('play_methods')
+                if play_methods:
+                    output_lines.extend([
+                        "",
+                        f"[bold cyan]Play Methods:[/bold cyan]"
+                    ])
+                    if isinstance(play_methods, list):
+                        for i, method in enumerate(play_methods, 1):
+                            output_lines.append(f"  {i}. {method}")
+                    else:
+                        output_lines.append(f"  {play_methods}")
+                
+                # Add play_info if available
+                play_info = info.get('play_info')
+                if play_info:
+                    output_lines.extend([
+                        "",
+                        f"[bold yellow]Play Information:[/bold yellow]"
+                    ])
+                    if isinstance(play_info, dict):
+                        for key, value in play_info.items():
+                            # Format the key nicely
+                            formatted_key = key.replace('_', ' ').title()
+                            if isinstance(value, dict):
+                                output_lines.append(f"  [bold]{formatted_key}:[/bold]")
+                                for sub_key, sub_value in value.items():
+                                    formatted_sub_key = sub_key.replace('_', ' ').title()
+                                    output_lines.append(f"    {formatted_sub_key}: {sub_value}")
+                            elif isinstance(value, list):
+                                output_lines.append(f"  [bold]{formatted_key}:[/bold]")
+                                for item in value:
+                                    output_lines.append(f"    • {item}")
+                            else:
+                                output_lines.append(f"  {formatted_key}: {value}")
+                    elif isinstance(play_info, list):
+                        for i, item in enumerate(play_info, 1):
+                            output_lines.append(f"  {i}. {item}")
+                    else:
+                        output_lines.append(f"  {play_info}")
+                
                 console.print(Panel.fit(
-                    f"[bold green]Challenge Info[/bold green]\n"
-                    f"Name: {info.get('name', 'N/A') or 'N/A'}\n"
-                    f"Category: {info.get('category_name', 'N/A') or 'N/A'}\n"
-                    f"Difficulty: {info.get('difficulty', 'N/A') or 'N/A'}\n"
-                    f"Stars: {info.get('stars', 'N/A') or 'N/A'}\n"
-                    f"Points: {info.get('points', 'N/A') or 'N/A'}\n"
-                    f"Solves: {info.get('solves', 'N/A') or 'N/A'}\n"
-                    f"Reviews Count: {info.get('reviews_count', 'N/A') or 'N/A'}\n"
-                    f"State: {info.get('state', 'N/A') or 'N/A'}\n"
-                    f"Release Date: {info.get('release_date', 'N/A') or 'N/A'}\n"
-                    f"Description: {info.get('description', 'N/A') or 'N/A'}",
+                    "\n".join(output_lines),
                     title=f"Challenge: {challenge_slug}"
                 ))
         else:
