@@ -88,34 +88,45 @@ def status(debug, json_output):
         console.print(f"[red]Error: {e}[/red]")
 
 @connection.command()
+@click.option('--product', '-p', type=click.Choice(['competitive', 'labs', 'starting_point', 'fortresses']), 
+              default='labs', help='Product type for VPN servers')
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-def servers(debug, json_output):
-    """Get list of VPN servers"""
+def servers(product, debug, json_output):
+    """Get list of VPN servers for a specific product"""
     try:
         api_client = HTBAPIClient()
         connection_module = ConnectionModule(api_client)
-        result = connection_module.get_connections_servers()
+        result = connection_module.get_connections_servers(params={"product": product})
         
         if result and 'data' in result:
-            servers_data = result['data']
+            data = result['data']
             
-            table = Table(title="VPN Servers")
+            if debug or json_output:
+                handle_debug_option(debug, result, "Debug: VPN Servers", json_output)
+                return
+            
+            table = Table(title=f"VPN Servers - {product.title()}")
             table.add_column("ID", style="cyan")
             table.add_column("Name", style="green")
             table.add_column("Location", style="yellow")
-            table.add_column("Status", style="magenta")
-            table.add_column("Load", style="blue")
+            table.add_column("Type", style="magenta")
+            table.add_column("Status", style="blue")
             
-            for server in servers_data:
-                table.add_row(
-                    str(server.get('id', 'N/A') or 'N/A'),
-                    str(server.get('name', 'N/A') or 'N/A'),
-                    str(server.get('location', 'N/A') or 'N/A'),
-                    str(server.get('status', 'N/A') or 'N/A'),
-                    str(server.get('load', 'N/A') or 'N/A')
-                )
+            if 'options' in data:
+                for location, location_data in data['options'].items():
+                    for server_type, type_data in location_data.items():
+                        if 'servers' in type_data:
+                            for server_id, server_info in type_data['servers'].items():
+                                status = "Full" if server_info.get('full', False) else "Available"
+                                table.add_row(
+                                    str(server_id),
+                                    str(server_info.get('friendly_name', 'N/A')),
+                                    str(location),
+                                    str(server_type),
+                                    status
+                                )
             
             console.print(table)
         else:

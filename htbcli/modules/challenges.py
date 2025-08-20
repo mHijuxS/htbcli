@@ -1074,7 +1074,6 @@ def stop(challenge_identifier, debug, json_output):
             console.print(Panel.fit(
                 f"[bold green]Challenge Stop[/bold green]\n"
                 f"Challenge ID: {challenge_id}\n"
-                f"Status: {result.get('status', 'N/A') or 'N/A'}\n"
                 f"Message: {result.get('message', 'N/A') or 'N/A'}",
                 title="Challenge Stop"
             ))

@@ -349,12 +349,28 @@ def extend(machine_identifier):
         console.print(f"[red]Error: {e}[/red]")
 
 @vm.command()
-@click.argument('machine_identifier')
+@click.argument('machine_identifier', required=False)
 def reset(machine_identifier):
-    """Reset the virtual machine (accepts machine ID or name)"""
+    """Reset the virtual machine (accepts machine ID or name, defaults to active machine)"""
     try:
         api_client = HTBAPIClient()
         vm_module = VMModule(api_client)
+        
+        # If no machine identifier provided, get the active machine
+        if machine_identifier is None:
+            vm_status = vm_module.machines_module.get_vm_status()
+            if vm_status and vm_status.get('info'):
+                active_info = vm_status['info']
+                machine_identifier = active_info.get('name')
+                if machine_identifier:
+                    console.print(f"[blue]No machine specified, using active machine: {machine_identifier}[/blue]")
+                else:
+                    console.print("[red]Error: No active machine found and no machine specified[/red]")
+                    return
+            else:
+                console.print("[red]Error: No active machine found and no machine specified[/red]")
+                return
+        
         result = vm_module.reset_vm(machine_identifier)
         
         if result and 'error' in result:
@@ -364,6 +380,7 @@ def reset(machine_identifier):
         if result and 'message' in result:
             console.print(Panel.fit(
                 f"[bold green]VM Reset Successfully[/bold green]\n"
+                f"Machine: {machine_identifier}\n"
                 f"Message: {result['message']}",
                 title="VM Reset"
             ))
@@ -373,12 +390,28 @@ def reset(machine_identifier):
         console.print(f"[red]Error: {e}[/red]")
 
 @vm.command()
-@click.argument('machine_identifier')
+@click.argument('machine_identifier', required=False)
 def terminate(machine_identifier):
-    """Terminate the virtual machine (accepts machine ID or name)"""
+    """Terminate the virtual machine (accepts machine ID or name, defaults to active machine)"""
     try:
         api_client = HTBAPIClient()
         vm_module = VMModule(api_client)
+        
+        # If no machine identifier provided, get the active machine
+        if machine_identifier is None:
+            vm_status = vm_module.machines_module.get_vm_status()
+            if vm_status and vm_status.get('info'):
+                active_info = vm_status['info']
+                machine_identifier = active_info.get('name')
+                if machine_identifier:
+                    console.print(f"[blue]No machine specified, using active machine: {machine_identifier}[/blue]")
+                else:
+                    console.print("[red]Error: No active machine found and no machine specified[/red]")
+                    return
+            else:
+                console.print("[red]Error: No active machine found and no machine specified[/red]")
+                return
+        
         result = vm_module.terminate_vm(machine_identifier)
         
         if result and 'error' in result:
@@ -388,6 +421,7 @@ def terminate(machine_identifier):
         if result and 'message' in result:
             console.print(Panel.fit(
                 f"[bold green]VM Terminated Successfully[/bold green]\n"
+                f"Machine: {machine_identifier}\n"
                 f"Message: {result['message']}",
                 title="VM Terminate"
             ))
