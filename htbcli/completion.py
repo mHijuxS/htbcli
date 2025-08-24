@@ -72,7 +72,8 @@ def get_fortresses_subcommands() -> List[str]:
 def get_prolabs_subcommands() -> List[str]:
     """Get list of prolabs subcommands"""
     return [
-        'list', 'info', 'reviews', 'reviews-user', 'search'
+        'changelogs', 'connection', 'flags', 'info', 'list-prolabs', 'machines', 
+        'overview', 'progress', 'reviews', 'submit-flag'
     ]
 
 def get_vm_subcommands() -> List[str]:
@@ -270,7 +271,7 @@ def get_completion_suggestions(ctx: click.Context, args: List[str], incomplete: 
         
         # Prolabs-specific suggestions
         elif command == 'prolabs':
-            if subcommand in ['info', 'reviews', 'reviews-user']:
+            if subcommand in ['info', 'changelogs', 'connection', 'flags', 'machines', 'overview', 'progress', 'reviews', 'submit-flag']:
                 suggestions = get_prolab_ids()
         
         # Common option suggestions for any command

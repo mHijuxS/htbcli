@@ -19,6 +19,13 @@ class ConnectionModule:
     def __init__(self, api_client: HTBAPIClient):
         self.api = api_client
     
+    def resolve_prolab_identifier_to_id(self, identifier: str) -> Optional[int]:
+        """Resolve prolab identifier/slug to numeric ID"""
+        # Import here to avoid circular imports
+        from .prolabs import ProlabsModule
+        prolabs_module = ProlabsModule(self.api)
+        return prolabs_module.resolve_prolab_identifier_to_id(identifier)
+    
     def get_access_ovpnfile_udp(self, vpn_id: int) -> Dict[str, Any]:
         """Download UDP VPN config"""
         return self.api.get(f"/access/ovpnfile/{vpn_id}/0")
@@ -261,23 +268,53 @@ def switch(vpn_id, debug, json_output):
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-@click.argument('prolab_id', type=int)
-def prolab_status(prolab_id, debug, json_output):
-    """Get VPN server status for prolab"""
+@click.argument('prolab_identifier')
+def prolab_status(prolab_identifier, debug, json_output):
+    """Get VPN server status for prolab by name or ID"""
     try:
         api_client = HTBAPIClient()
         connection_module = ConnectionModule(api_client)
+        
+        # Try to parse as integer first, then resolve as identifier
+        try:
+            prolab_id = int(prolab_identifier)
+        except ValueError:
+            # Resolve identifier to ID
+            prolab_id = connection_module.resolve_prolab_identifier_to_id(prolab_identifier)
+            if prolab_id is None:
+                console.print(f"[yellow]ProLab '{prolab_identifier}' not found[/yellow]")
+                return
+        
         result = connection_module.get_connection_status_prolab(prolab_id)
+        
+        if debug:
+            from ..base_command import handle_debug_option
+            handle_debug_option(debug, result, "Debug: ProLab Status", json_output)
+            return
         
         if result and 'data' in result:
             status_data = result['data']
+            
+            # Extract server information
+            server_info = status_data.get('server', {})
+            if isinstance(server_info, dict):
+                server_name = server_info.get('friendly_name', 'N/A')
+                server_hostname = server_info.get('hostname', 'N/A')
+                server_id = server_info.get('id', 'N/A')
+            else:
+                server_name = str(server_info) if server_info else 'N/A'
+                server_hostname = 'N/A'
+                server_id = 'N/A'
+            
             console.print(Panel.fit(
                 f"[bold green]ProLab VPN Status[/bold green]\n"
-                f"ProLab ID: {prolab_id}\n"
+                f"ProLab: {prolab_identifier} (ID: {prolab_id})\n"
                 f"Connected: {status_data.get('connected', 'N/A') or 'N/A'}\n"
-                f"Server: {status_data.get('server', 'N/A') or 'N/A'}\n"
+                f"Server ID: {server_id}\n"
+                f"Server Name: {server_name}\n"
+                f"Server Hostname: {server_hostname}\n"
                 f"IP: {status_data.get('ip', 'N/A') or 'N/A'}",
-                title="ProLab Status"
+                title=f"ProLab Status: {prolab_identifier}"
             ))
         else:
             console.print("[yellow]No prolab status found[/yellow]")
@@ -315,35 +352,79 @@ def product_status(product_name, debug, json_output):
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-@click.argument('prolab_id', type=int)
-def prolab_servers(prolab_id, debug, json_output):
-    """Get prolab VPN servers"""
+@click.argument('prolab_identifier')
+def prolab_servers(prolab_identifier, debug, json_output):
+    """Get prolab VPN servers by name or ID"""
     try:
         api_client = HTBAPIClient()
         connection_module = ConnectionModule(api_client)
+        
+        # Try to parse as integer first, then resolve as identifier
+        try:
+            prolab_id = int(prolab_identifier)
+        except ValueError:
+            # Resolve identifier to ID
+            prolab_id = connection_module.resolve_prolab_identifier_to_id(prolab_identifier)
+            if prolab_id is None:
+                console.print(f"[yellow]ProLab '{prolab_identifier}' not found[/yellow]")
+                return
+        
         result = connection_module.get_connections_servers_prolab(prolab_id)
         
+        if debug:
+            from ..base_command import handle_debug_option
+            handle_debug_option(debug, result, "Debug: ProLab Servers", json_output)
+            return
+        
         if result and 'data' in result:
-            servers_data = result['data']
+            data = result['data']
             
-            table = Table(title=f"ProLab VPN Servers (ID: {prolab_id})")
-            table.add_column("ID", style="cyan")
-            table.add_column("Name", style="green")
-            table.add_column("Location", style="yellow")
-            table.add_column("Status", style="magenta")
-            table.add_column("Load", style="blue")
+            # Show assigned server
+            if 'assigned' in data and data['assigned']:
+                assigned = data['assigned']
+                console.print(Panel.fit(
+                    f"[bold green]Currently Assigned Server[/bold green]\n"
+                    f"ProLab: {prolab_identifier} (ID: {prolab_id})\n"
+                    f"Server ID: {assigned.get('id', 'N/A') or 'N/A'}\n"
+                    f"Server Name: {assigned.get('friendly_name', 'N/A') or 'N/A'}\n"
+                    f"Location: {assigned.get('location', 'N/A') or 'N/A'}\n"
+                    f"Current Clients: {assigned.get('current_clients', 'N/A') or 'N/A'}",
+                    title=f"Assigned Server: {prolab_identifier}"
+                ))
             
-            for server in servers_data:
-                table.add_row(
-                    str(server.get('id', 'N/A') or 'N/A'),
-                    str(server.get('name', 'N/A') or 'N/A'),
-                    str(server.get('location', 'N/A') or 'N/A'),
-                    str(server.get('status', 'N/A') or 'N/A'),
-                    str(server.get('load', 'N/A') or 'N/A')
-                )
-            
-            console.print(table)
+            # Show available servers
+            if 'options' in data and data['options']:
+                console.print("\n[bold]Available Servers:[/bold]")
+                
+                for region, region_data in data['options'].items():
+                    for location_name, location_data in region_data.items():
+                        console.print(f"\n[cyan]{location_name} ({location_data.get('location', 'N/A')})[/cyan]")
+                        
+                        servers = location_data.get('servers', {})
+                        if servers:
+                            table = Table(title=f"Servers in {location_name} - {prolab_identifier}")
+                            table.add_column("ID", style="cyan")
+                            table.add_column("Name", style="green")
+                            table.add_column("Location", style="yellow")
+                            table.add_column("Status", style="magenta")
+                            table.add_column("Clients", style="blue")
+                            
+                            for server_id, server in servers.items():
+                                status = "Full" if server.get('full') else "Available"
+                                table.add_row(
+                                    str(server.get('id', 'N/A') or 'N/A'),
+                                    str(server.get('friendly_name', 'N/A') or 'N/A'),
+                                    str(server.get('location', 'N/A') or 'N/A'),
+                                    status,
+                                    str(server.get('current_clients', 'N/A') or 'N/A')
+                                )
+                            
+                            console.print(table)
+                        else:
+                            console.print("[yellow]No servers available in this location[/yellow]")
+            else:
+                console.print("[yellow]No server options available[/yellow]")
         else:
-            console.print("[yellow]No prolab servers found[/yellow]")
+            console.print("[yellow]No prolab servers data found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")

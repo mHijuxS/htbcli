@@ -647,7 +647,7 @@ def list_machines(page, per_page, status, sort_by, sort_type, difficulty, os, ta
                         str(machine.get('os', 'N/A') or 'N/A'),
                         str(machine.get('difficultyText', 'N/A') or 'N/A'),
                         str(machine.get('star', 'N/A') or 'N/A'),
-                        'Active' if machine.get('active') is True else 'Retired' if machine.get('active') is False or machine.get('active') is None else 'N/A'
+                        'Active' if status == 'active' else 'Retired' if status == 'retired' else 'N/A'
                     ]
                     
                     # Add additional specified fields
@@ -675,7 +675,7 @@ def list_machines(page, per_page, status, sort_by, sort_type, difficulty, os, ta
                             str(machine.get('os', 'N/A') or 'N/A'),
                             str(machine.get('difficultyText', 'N/A') or 'N/A'),
                             str(machine.get('star', 'N/A') or 'N/A'),
-                            'Active' if machine.get('active') is True else 'Retired' if machine.get('active') is False or machine.get('active') is None else 'N/A'
+                            'Active' if status == 'active' else 'Retired' if status == 'retired' else 'N/A'
                         )
                     
                     console.print(table)

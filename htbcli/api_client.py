@@ -56,6 +56,14 @@ class HTBAPIClient:
             if response.status_code == 204 and endpoint == "/pwnbox/terminate":
                 return {"message": "PwnBox terminated successfully"}
             
+            # Special handling for prolab connection status - 400 when not connected is a valid response
+            if response.status_code == 400 and "/connection/status/prolab/" in endpoint:
+                try:
+                    response_data = response.json()
+                    return response_data
+                except:
+                    pass
+            
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:

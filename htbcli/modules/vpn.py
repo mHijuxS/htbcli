@@ -33,6 +33,10 @@ class VPNModule:
         """Get current connections status"""
         return self.api.get("/connections")
     
+    def get_prolab_servers(self, prolab_id: int) -> Dict[str, Any]:
+        """Get ProLab servers for a specific ProLab"""
+        return self.api.get(f"/connections/servers/prolab/{prolab_id}")
+    
     def switch_vpn_server(self, vpn_id: int) -> Dict[str, Any]:
         """Switch VPN server"""
         return self.api.post(f"/connections/servers/switch/{vpn_id}")
@@ -166,8 +170,8 @@ class VPNModule:
     def find_server_id_by_name(self, server_name: str) -> int:
         """Find server ID by friendly name across all products"""
         try:
-            # Search in all products
-            products = ['labs', 'starting_point', 'fortresses', 'pro_labs', 'endgames', 'competitive']
+            # Search in all valid products (excluding pro_labs which uses separate endpoint)
+            products = ['labs', 'starting_point', 'fortresses', 'competitive']
             
             for product in products:
                 servers = self.get_vpn_servers(product)
@@ -185,6 +189,33 @@ class VPNModule:
                                     if server_info.get('friendly_name', '').lower() == server_name.lower():
                                         return int(server_id)
             
+            # Search in ProLabs (using separate endpoint)
+            try:
+                from .prolabs import ProlabsModule
+                prolabs_module = ProlabsModule(self.api)
+                
+                # Get list of ProLabs
+                prolabs_result = prolabs_module.get_prolabs()
+                if prolabs_result and 'data' in prolabs_result and 'labs' in prolabs_result['data']:
+                    prolabs = prolabs_result['data']['labs']
+                    
+                    for prolab in prolabs:
+                        prolab_id = prolab.get('id')
+                        if prolab_id:
+                            prolab_servers = self.get_prolab_servers(prolab_id)
+                            if prolab_servers and 'data' in prolab_servers and 'options' in prolab_servers['data']:
+                                data = prolab_servers['data']
+                                
+                                if 'options' in data:
+                                    for location, location_data in data['options'].items():
+                                        for server_type, type_data in location_data.items():
+                                            if 'servers' in type_data:
+                                                for server_id, server_info in type_data['servers'].items():
+                                                    if server_info.get('friendly_name', '').lower() == server_name.lower():
+                                                        return int(server_id)
+            except Exception as e:
+                console.print(f"[yellow]Warning: Could not search ProLabs for server {server_name}: {e}[/yellow]")
+            
             return None
             
         except Exception as e:
@@ -194,8 +225,8 @@ class VPNModule:
     def find_server_name_by_id(self, server_id: int) -> Optional[str]:
         """Find server name by ID across all products"""
         try:
-            # Search in all products
-            products = ['labs', 'starting_point', 'fortresses', 'pro_labs', 'endgames', 'competitive']
+            # Search in all valid products (excluding pro_labs which uses separate endpoint)
+            products = ['labs', 'starting_point', 'fortresses', 'competitive']
             
             for product in products:
                 servers = self.get_vpn_servers(product)
@@ -219,6 +250,40 @@ class VPNModule:
                                             return friendly_name
                                         else:
                                             return f"Server {server_id}"
+            
+            # Search in ProLabs (using separate endpoint)
+            try:
+                from .prolabs import ProlabsModule
+                prolabs_module = ProlabsModule(self.api)
+                
+                # Get list of ProLabs
+                prolabs_result = prolabs_module.get_prolabs()
+                if prolabs_result and 'data' in prolabs_result and 'labs' in prolabs_result['data']:
+                    prolabs = prolabs_result['data']['labs']
+                    
+                    for prolab in prolabs:
+                        prolab_id = prolab.get('id')
+                        if prolab_id:
+                            prolab_servers = self.get_prolab_servers(prolab_id)
+                            if prolab_servers and 'data' in prolab_servers and 'options' in prolab_servers['data']:
+                                data = prolab_servers['data']
+                                
+                                if 'options' in data:
+                                    for location, location_data in data['options'].items():
+                                        for server_type, type_data in location_data.items():
+                                            if 'servers' in type_data:
+                                                for sid, server_info in type_data['servers'].items():
+                                                    if int(sid) == server_id:
+                                                        friendly_name = server_info.get('friendly_name', '')
+                                                        location = server_info.get('location', '')
+                                                        if friendly_name and location:
+                                                            return f"{friendly_name} ({location})"
+                                                        elif friendly_name:
+                                                            return friendly_name
+                                                        else:
+                                                            return f"Server {server_id}"
+            except Exception as e:
+                console.print(f"[yellow]Warning: Could not search ProLabs for server ID {server_id}: {e}[/yellow]")
             
             return None
             
@@ -573,8 +638,50 @@ def vpn(download, start, stop, list, files, switch, mode, name, server_id):
                 # If files don't exist, download them
                 if not existing_files:
                     console.print(f"[blue]VPN files not found for {name}, downloading...[/blue]")
-                    if not vpn_module.download_current_vpn():
-                        console.print(f"[red]Failed to download VPN for {name}[/red]")
+                    
+                    # Download VPN files directly for the specific server ID
+                    try:
+                        # Get server info to get the friendly name and location
+                        server_name = name
+                        location = "unknown"
+                        
+                        # Try to get location from competitive servers
+                        competitive_servers = vpn_module.get_vpn_servers("competitive")
+                        if competitive_servers and 'data' in competitive_servers and 'options' in competitive_servers['data']:
+                            data = competitive_servers['data']
+                            for loc, location_data in data['options'].items():
+                                for server_type, type_data in location_data.items():
+                                    if 'servers' in type_data and str(server_id) in type_data['servers']:
+                                        server_info = type_data['servers'][str(server_id)]
+                                        server_name = server_info.get('friendly_name', name)
+                                        location = server_info.get('location', 'unknown')
+                                        break
+                        
+                        console.print(f"[blue]Downloading VPN for server: {server_name} ({location})[/blue]")
+                        
+                        # Download UDP config
+                        udp_config = vpn_module.api.get_binary(f"/access/ovpnfile/{server_id}/0")
+                        udp_filename = f"{server_name}_{location}_udp.ovpn"
+                        udp_path = vpn_module.vpn_dir / udp_filename
+                        
+                        with open(udp_path, 'wb') as f:
+                            f.write(udp_config)
+                        
+                        console.print(f"[green]✓[/green] Downloaded UDP config: {udp_filename}")
+                        
+                        # Download TCP config
+                        tcp_config = vpn_module.api.get_binary(f"/access/ovpnfile/{server_id}/0/1")
+                        tcp_filename = f"{server_name}_{location}_tcp.ovpn"
+                        tcp_path = vpn_module.vpn_dir / tcp_filename
+                        
+                        with open(tcp_path, 'wb') as f:
+                            f.write(tcp_config)
+                        
+                        console.print(f"[green]✓[/green] Downloaded TCP config: {tcp_filename}")
+                        console.print(f"[green]✓[/green] Successfully downloaded VPN configs for {server_name}")
+                        
+                    except Exception as e:
+                        console.print(f"[red]Failed to download VPN for {name}: {e}[/red]")
                         return
                 else:
                     console.print(f"[blue]VPN files already exist for {name}[/blue]")
@@ -612,35 +719,76 @@ def vpn(download, start, stop, list, files, switch, mode, name, server_id):
                 # Start by mode - use the currently assigned server for that mode
                 console.print(f"[blue]Starting VPN for {mode} mode using currently assigned server...[/blue]")
                 
-                # Get current connections to find the assigned server
-                connections = vpn_module.get_connections()
-                if not connections or 'data' not in connections:
-                    console.print("[red]Could not get current connections[/red]")
-                    return
+                if mode == 'prolabs':
+                    # Special handling for ProLabs - get list of ProLabs and find one with assigned server
+                    from .prolabs import ProlabsModule
+                    prolabs_module = ProlabsModule(api_client)
+                    
+                    # Get list of ProLabs
+                    prolabs_result = prolabs_module.get_prolabs()
+                    if not prolabs_result or 'data' not in prolabs_result or 'labs' not in prolabs_result['data']:
+                        console.print("[red]Could not get ProLabs list[/red]")
+                        return
+                    
+                    prolabs = prolabs_result['data']['labs']
+                    assigned_prolab = None
+                    assigned_server = None
+                    
+                    # Find first ProLab with assigned server
+                    for prolab in prolabs:
+                        prolab_id = prolab.get('id')
+                        if prolab_id:
+                            prolab_servers = vpn_module.get_prolab_servers(prolab_id)
+                            if prolab_servers and 'data' in prolab_servers and 'assigned' in prolab_servers['data'] and prolab_servers['data']['assigned']:
+                                assigned_prolab = prolab
+                                assigned_server = prolab_servers['data']['assigned']
+                                break
+                    
+                    if not assigned_server:
+                        console.print("[red]No ProLab server assigned[/red]")
+                        return
+                    
+                    server_name = assigned_server.get('friendly_name', 'unknown')
+                    location = assigned_server.get('location', 'unknown')
+                    server_id = assigned_server.get('id', 'unknown')
+                    prolab_name = assigned_prolab.get('name', 'unknown')
+                    
+                    console.print(f"[blue]Current ProLab server: {server_name} ({location}) - ID: {server_id} for {prolab_name}[/blue]")
+                else:
+                    # Get current connections to find the assigned server for other modes
+                    connections = vpn_module.get_connections()
+                    if not connections or 'data' not in connections:
+                        console.print("[red]Could not get current connections[/red]")
+                        return
+                    
+                    data = connections['data']
+                    
+                    # Map mode to product key
+                    mode_map = {
+                        'labs': 'lab',
+                        'sp': 'starting_point',
+                        'fortresses': 'fortresses',
+                        'prolabs': 'pro_labs',
+                        'endgames': 'endgames',
+                        'competitive': 'competitive'
+                    }
+                    
+                    product_key = mode_map.get(mode, 'lab')
+                    
+                    if product_key not in data or not data[product_key] or 'assigned_server' not in data[product_key]:
+                        console.print(f"[red]No server assigned for {mode} mode[/red]")
+                        return
+                    
+                    assigned_server = data[product_key]['assigned_server']
+                    if not assigned_server:
+                        console.print(f"[red]No server assigned for {mode} mode[/red]")
+                        return
+                    
+                    server_name = assigned_server.get('friendly_name', 'unknown')
+                    location = assigned_server.get('location', 'unknown')
                 
-                data = connections['data']
-                
-                # Map mode to product key
-                mode_map = {
-                    'labs': 'lab',
-                    'sp': 'starting_point',
-                    'fortresses': 'fortresses',
-                    'prolabs': 'pro_labs',
-                    'endgames': 'endgames',
-                    'competitive': 'competitive'
-                }
-                
-                product_key = mode_map.get(mode, 'lab')
-                
-                if product_key not in data or not data[product_key] or 'assigned_server' not in data[product_key]:
-                    console.print(f"[red]No server assigned for {mode} mode[/red]")
-                    return
-                
-                assigned_server = data[product_key]['assigned_server']
-                server_name = assigned_server.get('friendly_name', 'unknown')
-                location = assigned_server.get('location', 'unknown')
-                
-                console.print(f"[blue]Current {mode} server: {server_name} ({location})[/blue]")
+                if mode != 'prolabs':
+                    console.print(f"[blue]Current {mode} server: {server_name} ({location})[/blue]")
                 
                 # Check if VPN files already exist for this server
                 vpn_files = vpn_module.list_vpn_files()
@@ -653,9 +801,37 @@ def vpn(download, start, stop, list, files, switch, mode, name, server_id):
                 # If files don't exist, download them
                 if not existing_files:
                     console.print(f"[blue]VPN files not found for {server_name}, downloading...[/blue]")
-                    if not vpn_module.download_current_vpn(mode):
-                        console.print(f"[red]Failed to download VPN for {mode} mode[/red]")
-                        return
+                    
+                    if mode == 'prolabs':
+                        # For ProLabs, download directly using the server ID
+                        try:
+                            # Download UDP config
+                            udp_config = vpn_module.api.get_binary(f"/access/ovpnfile/{server_id}/0")
+                            udp_filename = f"{server_name}_{location}_udp.ovpn"
+                            udp_path = vpn_module.vpn_dir / udp_filename
+                            
+                            with open(udp_path, 'wb') as f:
+                                f.write(udp_config)
+                            
+                            console.print(f"[green]✓[/green] Downloaded UDP config: {udp_filename}")
+                            
+                            # Download TCP config
+                            tcp_config = vpn_module.api.get_binary(f"/access/ovpnfile/{server_id}/0/1")
+                            tcp_filename = f"{server_name}_{location}_tcp.ovpn"
+                            tcp_path = vpn_module.vpn_dir / tcp_filename
+                            
+                            with open(tcp_path, 'wb') as f:
+                                f.write(tcp_config)
+                            
+                            console.print(f"[green]✓[/green] Downloaded TCP config: {tcp_filename}")
+                            
+                        except Exception as e:
+                            console.print(f"[red]Failed to download VPN for ProLab: {e}[/red]")
+                            return
+                    else:
+                        if not vpn_module.download_current_vpn(mode):
+                            console.print(f"[red]Failed to download VPN for {mode} mode[/red]")
+                            return
                     
                     # Re-check for files after download
                     vpn_files = vpn_module.list_vpn_files()

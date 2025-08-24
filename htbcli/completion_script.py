@@ -84,7 +84,7 @@ _htbcli_completion() {
                 opts="list info submit-flag reviews reviews-user search"
                 ;;
             prolabs)
-                opts="list info reviews reviews-user search"
+                opts="changelogs connection flags info list-prolabs machines overview progress reviews submit-flag"
                 ;;
             vm)
                 opts="spawn terminate status list info"
@@ -385,11 +385,16 @@ _htbcli_subcommands() {
             ;;
         prolabs)
             subcommands=(
-                'list:List prolabs'
-                'info:Get prolab info'
+                'changelogs:Get prolab changelogs'
+                'connection:Get prolab connection information'
+                'flags:Get prolab flags'
+                'info:Get prolab info by identifier/name'
+                'list-prolabs:List prolabs'
+                'machines:Get prolab machines'
+                'overview:Get prolab overview'
+                'progress:Get prolab progress'
                 'reviews:Get prolab reviews'
-                'reviews-user:Get user prolab reviews'
-                'search:Search for prolabs'
+                'submit-flag:Submit a flag for a prolab'
             )
             ;;
         vm)
