@@ -4,6 +4,7 @@ Machines module for HTB CLI
 
 import click
 import sys
+import json
 from typing import Dict, Any, Optional, Union
 from rich.console import Console
 from rich.table import Table
@@ -14,6 +15,44 @@ from ..base_command import handle_debug_option
 from .vpn import VPNModule
 
 console = Console()
+
+def format_complex_value(value: Any, indent: int = 0) -> str:
+    """Format complex values (dicts, lists) in a readable way"""
+    indent_str = "  " * indent
+    
+    if isinstance(value, dict):
+        if not value:
+            return "{}"
+        lines = ["{"]
+        for k, v in value.items():
+            formatted_v = format_complex_value(v, indent + 1)
+            lines.append(f"{indent_str}  {k}: {formatted_v}")
+        lines.append(f"{indent_str}}}")
+        return "\n".join(lines)
+    elif isinstance(value, list):
+        if not value:
+            return "[]"
+        lines = ["["]
+        for i, item in enumerate(value):
+            formatted_item = format_complex_value(item, indent + 1)
+            lines.append(f"{indent_str}  {i}: {formatted_item}")
+        lines.append(f"{indent_str}]")
+        return "\n".join(lines)
+    elif value is None:
+        return "null"
+    else:
+        return str(value)
+
+def format_response_fields(data: Dict[str, Any]) -> str:
+    """Format response fields with proper handling of complex nested structures"""
+    lines = []
+    for key, value in data.items():
+        if isinstance(value, (dict, list)) and value:
+            lines.append(f"{key}:")
+            lines.append(format_complex_value(value, 1))
+        else:
+            lines.append(f"{key}: {value}")
+    return "\n".join(lines)
 
 class MachinesModule:
     """Module for handling machine-related API calls"""
@@ -701,10 +740,11 @@ def profile(machine_slug, responses, option):
             info = result['info']
             
             if responses:
-                # Show all available fields
+                # Show all available fields with proper formatting for complex structures
+                formatted_fields = format_response_fields(info)
                 console.print(Panel.fit(
                     f"[bold green]All Available Fields for Machine Profile[/bold green]\n"
-                    f"{chr(10).join([f'{k}: {v}' for k, v in info.items()])}",
+                    f"{formatted_fields}",
                     title=f"Machine: {machine_slug} - All Fields"
                 ))
             elif option:
@@ -717,9 +757,10 @@ def profile(machine_slug, responses, option):
                         console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
                 
                 if selected_info:
+                    formatted_fields = format_response_fields(selected_info)
                     console.print(Panel.fit(
                         f"[bold green]Selected Fields[/bold green]\n"
-                        f"{chr(10).join([f'{k}: {v}' for k, v in selected_info.items()])}",
+                        f"{formatted_fields}",
                         title=f"Machine: {machine_slug} - Selected Fields"
                     ))
             else:
