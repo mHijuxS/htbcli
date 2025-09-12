@@ -246,68 +246,92 @@ class MachinesModule:
         return self.api.get(f"/machines/tasks/{machine_id}")
     
     def search_machine_by_name(self, machine_name: str, max_pages: int = 20) -> Optional[int]:
-        """Search for a machine by name and return its ID"""
+        """Search for a machine by name using platform search API and return its ID"""
         try:
-            # Search through active machines
-            for page in range(1, max_pages + 1):
-                result = self.get_machine_paginated(page=page, per_page=20, status='active')
-                
-                if not result or 'data' not in result:
-                    continue
-                
-                machines = result['data']
-                if not machines:
-                    continue
-                
-                # Search through machines on this page
-                for machine in machines:
-                    name = machine.get('name', '').lower()
-                    machine_id = machine.get('id')
-                    
-                    # Check for exact match first
-                    if name == machine_name.lower():
-                        return machine_id
-                    
-                    # Check for partial match (contains)
-                    if machine_name.lower() in name:
-                        return machine_id
-                
-                # If no more machines on this page, stop searching
-                if len(machines) < 20:
-                    break
+            # Use platform search API to find machines
+            from .platform import PlatformModule
+            platform_module = PlatformModule(self.api)
+            result = platform_module.get_search_fetch(machine_name)
             
-            # Search through retired machines using the correct endpoint
-            for page in range(1, max_pages + 1):
-                result = self.get_machine_list_retired_paginated(page=page, per_page=20)
+            if not result or 'machines' not in result:
+                return None
+            
+            machines = result['machines']
+            if not machines:
+                return None
+            
+            # Filter and rank matches
+            exact_matches = []
+            partial_matches = []
+            
+            for machine in machines:
+                name = machine.get('value', '').lower()  # 'value' field contains the machine name
+                machine_id = machine.get('id')
+                search_term = machine_name.lower()
                 
-                if not result or 'data' not in result:
-                    continue
+                # Check for exact match first
+                if name == search_term:
+                    exact_matches.append((machine_id, name))
                 
-                machines = result['data']['data'] if isinstance(result['data'], dict) and 'data' in result['data'] else result['data']
-                if not machines:
-                    continue
-                
-                # Search through machines on this page
-                for machine in machines:
-                    name = machine.get('name', '').lower()
-                    machine_id = machine.get('id')
-                    
-                    # Check for exact match first
-                    if name == machine_name.lower():
-                        return machine_id
-                    
-                    # Check for partial match (contains)
-                    if machine_name.lower() in name:
-                        return machine_id
-                
-                # If no more machines on this page, stop searching
-                if len(machines) < 20:
-                    break
+                # Check for partial match (contains)
+                elif search_term in name:
+                    partial_matches.append((machine_id, name))
+            
+            # If we have exact matches, return the first one
+            if exact_matches:
+                return exact_matches[0][0]
+            
+            # If we have partial matches, return the first one
+            if partial_matches:
+                return partial_matches[0][0]
             
             return None
             
         except Exception as e:
             console.print(f"[red]Error searching for machine '{machine_name}': {e}[/red]")
+            return None
+    
+    def search_machines_by_name_with_options(self, machine_name: str) -> Optional[Dict[str, Any]]:
+        """Search for machines by name using platform search API and return all matches with options"""
+        try:
+            # Use platform search API to find machines
+            from .platform import PlatformModule
+            platform_module = PlatformModule(self.api)
+            result = platform_module.get_search_fetch(machine_name)
+            
+            if not result or 'machines' not in result:
+                return None
+            
+            machines = result['machines']
+            if not machines:
+                return None
+            
+            # Filter and rank matches
+            exact_matches = []
+            partial_matches = []
+            
+            for machine in machines:
+                name = machine.get('value', '').lower()  # 'value' field contains the machine name
+                machine_id = machine.get('id')
+                search_term = machine_name.lower()
+                
+                # Check for exact match first
+                if name == search_term:
+                    exact_matches.append(machine)
+                
+                # Check for partial match (contains)
+                elif search_term in name:
+                    partial_matches.append(machine)
+            
+            # Return results with match information
+            return {
+                'exact_matches': exact_matches,
+                'partial_matches': partial_matches,
+                'total_matches': len(exact_matches) + len(partial_matches)
+            }
+            
+        except Exception as e:
+            console.print(f"[red]Error searching for machines '{machine_name}': {e}[/red]")
             return None
     
     def resolve_machine_id(self, machine_identifier: Union[int, str]) -> Optional[int]:
@@ -1594,6 +1618,86 @@ def adventure(machine_identifier, debug, json_output):
             ))
         else:
             console.print("[yellow]No adventure data found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.argument('machine_name')
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def search(machine_name, debug, json_output):
+    """Search for machines by name and show all matches"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+        
+        search_results = machines_module.search_machines_by_name_with_options(machine_name)
+        
+        if debug or json_output:
+            handle_debug_option(debug, search_results, "Debug: Machine Search Results", json_output)
+            return
+        
+        if not search_results or search_results['total_matches'] == 0:
+            console.print(f"[yellow]No machines found with name: {machine_name}[/yellow]")
+            return
+        
+        # Display exact matches first
+        if search_results['exact_matches']:
+            table = Table(title=f"Exact Matches for '{machine_name}'")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("Avatar", style="yellow")
+            table.add_column("Tier", style="magenta")
+            table.add_column("Starting Point", style="blue")
+            
+            for machine in search_results['exact_matches']:
+                avatar_status = "Yes" if machine.get('avatar') else "No"
+                tier_status = str(machine.get('tierId', 'N/A') or 'N/A')
+                sp_status = "Yes" if machine.get('isSp') else "No"
+                table.add_row(
+                    str(machine.get('id', 'N/A') or 'N/A'),
+                    str(machine.get('value', 'N/A') or 'N/A'),
+                    avatar_status,
+                    tier_status,
+                    sp_status
+                )
+            console.print(table)
+        
+        # Display partial matches
+        if search_results['partial_matches']:
+            table = Table(title=f"Partial Matches for '{machine_name}'")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("Avatar", style="yellow")
+            table.add_column("Tier", style="magenta")
+            table.add_column("Starting Point", style="blue")
+            
+            for machine in search_results['partial_matches']:
+                avatar_status = "Yes" if machine.get('avatar') else "No"
+                tier_status = str(machine.get('tierId', 'N/A') or 'N/A')
+                sp_status = "Yes" if machine.get('isSp') else "No"
+                table.add_row(
+                    str(machine.get('id', 'N/A') or 'N/A'),
+                    str(machine.get('value', 'N/A') or 'N/A'),
+                    avatar_status,
+                    tier_status,
+                    sp_status
+                )
+            console.print(table)
+        
+        # Show summary
+        total = search_results['total_matches']
+        exact = len(search_results['exact_matches'])
+        partial = len(search_results['partial_matches'])
+        
+        console.print(Panel.fit(
+            f"[bold green]Search Summary[/bold green]\n"
+            f"Total matches: {total}\n"
+            f"Exact matches: {exact}\n"
+            f"Partial matches: {partial}",
+            title="Machine Search Results"
+        ))
+        
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 

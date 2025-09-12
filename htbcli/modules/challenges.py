@@ -215,40 +215,92 @@ class ChallengesModule:
         return self.api.get("/challenges", params=params)
     
     def search_challenge_by_name(self, challenge_name: str, max_pages: int = 5) -> Optional[int]:
-        """Search for a challenge by name and return its ID"""
+        """Search for a challenge by name using platform search API and return its ID"""
         try:
-            # Search through multiple pages to find the challenge
-            for page in range(1, max_pages + 1):
-                result = self.get_challenges(page=page, per_page=20)
+            # Use platform search API to find challenges
+            from .platform import PlatformModule
+            platform_module = PlatformModule(self.api)
+            result = platform_module.get_search_fetch(challenge_name)
+            
+            if not result or 'challenges' not in result:
+                return None
+            
+            challenges = result['challenges']
+            if not challenges:
+                return None
+            
+            # Filter and rank matches
+            exact_matches = []
+            partial_matches = []
+            
+            for challenge in challenges:
+                name = challenge.get('value', '').lower()  # 'value' field contains the challenge name
+                challenge_id = challenge.get('id')
+                search_term = challenge_name.lower()
                 
-                if not result or 'data' not in result:
-                    continue
+                # Check for exact match first
+                if name == search_term:
+                    exact_matches.append((challenge_id, name))
                 
-                challenges = result['data']
-                if not challenges:
-                    continue
-                
-                # Search through challenges on this page
-                for challenge in challenges:
-                    name = challenge.get('name', '').lower()
-                    challenge_id = challenge.get('id')
-                    
-                    # Check for exact match first
-                    if name == challenge_name.lower():
-                        return challenge_id
-                    
-                    # Check for partial match (contains)
-                    if challenge_name.lower() in name:
-                        return challenge_id
-                
-                # If no more challenges on this page, stop searching
-                if len(challenges) < 20:
-                    break
+                # Check for partial match (contains)
+                elif search_term in name:
+                    partial_matches.append((challenge_id, name))
+            
+            # If we have exact matches, return the first one
+            if exact_matches:
+                return exact_matches[0][0]
+            
+            # If we have partial matches, return the first one
+            if partial_matches:
+                return partial_matches[0][0]
             
             return None
             
         except Exception as e:
             console.print(f"[red]Error searching for challenge '{challenge_name}': {e}[/red]")
+            return None
+    
+    def search_challenges_by_name_with_options(self, challenge_name: str) -> Optional[Dict[str, Any]]:
+        """Search for challenges by name using platform search API and return all matches with options"""
+        try:
+            # Use platform search API to find challenges
+            from .platform import PlatformModule
+            platform_module = PlatformModule(self.api)
+            result = platform_module.get_search_fetch(challenge_name)
+            
+            if not result or 'challenges' not in result:
+                return None
+            
+            challenges = result['challenges']
+            if not challenges:
+                return None
+            
+            # Filter and rank matches
+            exact_matches = []
+            partial_matches = []
+            
+            for challenge in challenges:
+                name = challenge.get('value', '').lower()  # 'value' field contains the challenge name
+                challenge_id = challenge.get('id')
+                search_term = challenge_name.lower()
+                
+                # Check for exact match first
+                if name == search_term:
+                    exact_matches.append(challenge)
+                
+                # Check for partial match (contains)
+                elif search_term in name:
+                    partial_matches.append(challenge)
+            
+            # Return results with match information
+            return {
+                'exact_matches': exact_matches,
+                'partial_matches': partial_matches,
+                'total_matches': len(exact_matches) + len(partial_matches)
+            }
+            
+        except Exception as e:
+            console.print(f"[red]Error searching for challenges '{challenge_name}': {e}[/red]")
             return None
     
     def resolve_challenge_id(self, challenge_identifier: Union[int, str]) -> Optional[int]:
@@ -1335,26 +1387,82 @@ def mark_helpful(review_id, debug, json_output):
 
 @challenges.command()
 @click.argument('challenge_name')
-@click.option('--max-pages', default=5, help='Maximum number of pages to search')
+@click.option('--max-pages', default=5, help='Maximum number of pages to search (deprecated, now uses platform search)')
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 def search(challenge_name, max_pages, debug, json_output):
-    """Search for a challenge by name"""
+    """Search for challenges by name and show all matches"""
     try:
         api_client = HTBAPIClient()
         challenges_module = ChallengesModule(api_client)
         
-        challenge_id = challenges_module.search_challenge_by_name(challenge_name, max_pages)
+        search_results = challenges_module.search_challenges_by_name_with_options(challenge_name)
         
-        if challenge_id:
-            console.print(Panel.fit(
-                f"[bold green]Challenge Found[/bold green]\n"
-                f"Name: {challenge_name}\n"
-                f"ID: {challenge_id}",
-                title="Challenge Search Result"
-            ))
-        else:
-            console.print(f"[yellow]No challenge found with name: {challenge_name}[/yellow]")
+        if debug or json_output:
+            handle_debug_option(debug, search_results, "Debug: Challenge Search Results", json_output)
+            return
+        
+        if not search_results or search_results['total_matches'] == 0:
+            console.print(f"[yellow]No challenges found with name: {challenge_name}[/yellow]")
+            return
+        
+        # Display exact matches first
+        if search_results['exact_matches']:
+            table = Table(title=f"Exact Matches for '{challenge_name}'")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("Category ID", style="yellow")
+            table.add_column("Description", style="magenta")
+            
+            for challenge in search_results['exact_matches']:
+                # Truncate description if too long
+                description = challenge.get('description', 'N/A') or 'N/A'
+                if len(description) > 50:
+                    description = description[:47] + "..."
+                
+                table.add_row(
+                    str(challenge.get('id', 'N/A') or 'N/A'),
+                    str(challenge.get('value', 'N/A') or 'N/A'),
+                    str(challenge.get('challenge_category_id', 'N/A') or 'N/A'),
+                    description
+                )
+            console.print(table)
+        
+        # Display partial matches
+        if search_results['partial_matches']:
+            table = Table(title=f"Partial Matches for '{challenge_name}'")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("Category ID", style="yellow")
+            table.add_column("Description", style="magenta")
+            
+            for challenge in search_results['partial_matches']:
+                # Truncate description if too long
+                description = challenge.get('description', 'N/A') or 'N/A'
+                if len(description) > 50:
+                    description = description[:47] + "..."
+                
+                table.add_row(
+                    str(challenge.get('id', 'N/A') or 'N/A'),
+                    str(challenge.get('value', 'N/A') or 'N/A'),
+                    str(challenge.get('challenge_category_id', 'N/A') or 'N/A'),
+                    description
+                )
+            console.print(table)
+        
+        # Show summary
+        total = search_results['total_matches']
+        exact = len(search_results['exact_matches'])
+        partial = len(search_results['partial_matches'])
+        
+        console.print(Panel.fit(
+            f"[bold green]Search Summary[/bold green]\n"
+            f"Total matches: {total}\n"
+            f"Exact matches: {exact}\n"
+            f"Partial matches: {partial}",
+            title="Challenge Search Results"
+        ))
+        
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
