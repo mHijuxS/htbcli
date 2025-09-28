@@ -233,9 +233,9 @@ class MachinesModule:
         """Get machine walkthroughs"""
         return self.api.get(f"/machine/walkthroughs/{machine_id}")
     
-    def get_machine_writeup(self, machine_id: int) -> Dict[str, Any]:
-        """Get machine writeup"""
-        return self.api.get(f"/machine/writeup/{machine_id}")
+    def get_machine_writeup(self, machine_id: int) -> bytes:
+        """Get machine writeup (returns PDF binary data)"""
+        return self.api.get_binary(f"/machine/writeup/{machine_id}")
     
     def get_machines_adventure(self, machine_id: int) -> Dict[str, Any]:
         """Get machines adventure"""
@@ -792,26 +792,25 @@ def profile(machine_slug, responses, option):
                 maker_name = info.get('maker', {}).get('name', 'N/A') if info.get('maker') else 'N/A'
                 difficulty_text = info.get('difficultyText', 'N/A')
                 stars = info.get('stars', 'N/A')
-                is_guided = 'Yes' if info.get('isGuidedEnabled') else 'No'
                 auth_user_owns = 'Yes' if info.get('authUserInUserOwns') else 'No'
                 auth_root_owns = 'Yes' if info.get('authUserInRootOwns') else 'No'
+                info_status = info.get('info_status', 'N/A')
                 
                 console.print(Panel.fit(
                     f"[bold green]Machine Profile[/bold green]\n"
                     f"Name: {info.get('name', 'N/A') or 'N/A'}\n"
                     f"OS: {info.get('os', 'N/A') or 'N/A'}\n"
                     f"Difficulty: {difficulty_text}\n"
-                    f"Points: {info.get('points', 'N/A') or 'N/A'}\n"
                     f"Stars: {stars}\n"
                     f"Status: {'Active' if info.get('active') else 'Retired' if info.get('retired') else 'N/A'}\n"
-                    f"IP: {info.get('ip', 'N/A') or 'N/A'}\n"
                     f"User Owns: {info.get('user_owns_count', 'N/A') or 'N/A'}\n"
                     f"Root Owns: {info.get('root_owns_count', 'N/A') or 'N/A'}\n"
                     f"Maker: {maker_name}\n"
-                    f"Guided Mode: {is_guided}\n"
                     f"You Own User: {auth_user_owns}\n"
                     f"You Own Root: {auth_root_owns}\n"
-                    f"Release Date: {info.get('release', 'N/A') or 'N/A'}",
+                    f"Release Date: {info.get('release', 'N/A') or 'N/A'}\n"
+                    f"IP: {info.get('ip', 'N/A') or 'N/A'}\n"
+                    f"Info Status: {info_status}",
                     title=f"Machine: {machine_slug}"
                 ))
         else:
@@ -1562,10 +1561,11 @@ def walkthroughs(machine_identifier, debug, json_output):
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+@click.option('--output', '-o', help='Output file path (default: machine_name_writeup.pdf)')
 
 @click.argument('machine_identifier')
-def writeup(machine_identifier, debug, json_output):
-    """Get machine writeup (accepts machine ID or name)"""
+def writeup(machine_identifier, debug, json_output, output):
+    """Get machine writeup (accepts machine ID or name) - downloads PDF file"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
@@ -1576,17 +1576,40 @@ def writeup(machine_identifier, debug, json_output):
             console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
             return
         
-        result = machines_module.get_machine_writeup(machine_id)
+        # Get machine name for filename if not provided
+        machine_name = machine_identifier
+        if machine_id:
+            try:
+                machine_info = machines_module.get_machine_info(machine_id)
+                if machine_info and 'data' in machine_info and 'name' in machine_info['data']:
+                    machine_name = machine_info['data']['name']
+            except:
+                pass  # Use original identifier if we can't get the name
         
-        if result:
-            console.print(Panel.fit(
-                f"[bold green]Machine Writeup[/bold green]\n"
-                f"Machine ID: {machine_id}\n"
-                f"Data: {result}",
-                title="Machine Writeup"
-            ))
+        # Determine output filename
+        if output:
+            output_path = output
         else:
-            console.print("[yellow]No writeup found[/yellow]")
+            # Create safe filename from machine name
+            safe_name = "".join(c for c in machine_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+            safe_name = safe_name.replace(' ', '_')
+            output_path = f"{safe_name}_writeup.pdf"
+        
+        console.print(f"[blue]Downloading writeup for machine: {machine_name} (ID: {machine_id})[/blue]")
+        
+        # Get the PDF binary data
+        pdf_data = machines_module.get_machine_writeup(machine_id)
+        
+        if pdf_data:
+            # Save the PDF file
+            with open(output_path, 'wb') as f:
+                f.write(pdf_data)
+            
+            console.print(f"[green]✓[/green] Writeup downloaded successfully: {output_path}")
+            console.print(f"[blue]File size: {len(pdf_data)} bytes[/blue]")
+        else:
+            console.print("[yellow]No writeup found for this machine[/yellow]")
+            
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 

@@ -243,7 +243,8 @@ def info(prolab_identifier, debug, json_output):
 @click.argument('prolab_identifier')
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
-def overview(prolab_identifier, debug, json_output):
+@click.option('--responses', is_flag=True, help='Show all available response fields')
+def overview(prolab_identifier, debug, json_output, responses):
     """Get prolab overview"""
     try:
         api_client = HTBAPIClient()
@@ -257,9 +258,21 @@ def overview(prolab_identifier, debug, json_output):
         
         result = prolabs_module.get_prolab_overview(prolab_id)
         
-        if debug:
-            from ..base_command import handle_debug_option
+        if debug or json_output:
             handle_debug_option(debug, result, "Debug: ProLab Overview", json_output)
+            return
+        
+        if responses:
+            # Show all available fields
+            if result and 'data' in result:
+                overview_data = result['data']
+                console.print(Panel.fit(
+                    f"[bold green]All Available Fields for ProLab Overview[/bold green]\n"
+                    f"{chr(10).join([f'{k}: {v}' for k, v in overview_data.items()])}",
+                    title=f"ProLab Overview - All Fields: {prolab_identifier}"
+                ))
+            else:
+                console.print("[yellow]No overview data found[/yellow]")
             return
         
         if result and 'data' in result:
@@ -666,5 +679,170 @@ def connection(prolab_identifier, debug, json_output):
         else:
             console.print("[yellow]No server information found[/yellow]")
             
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@prolabs.command()
+@click.argument('prolab_identifier')
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def faq(prolab_identifier, debug, json_output):
+    """Get prolab FAQ"""
+    try:
+        api_client = HTBAPIClient()
+        prolabs_module = ProlabsModule(api_client)
+        
+        # Resolve identifier to ID
+        prolab_id = prolabs_module.resolve_prolab_identifier_to_id(prolab_identifier)
+        if prolab_id is None:
+            console.print(f"[yellow]ProLab '{prolab_identifier}' not found[/yellow]")
+            return
+        
+        result = prolabs_module.get_prolab_faq(prolab_id)
+        
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: ProLab FAQ", json_output)
+            return
+        
+        if result and 'data' in result:
+            faq_data = result['data']
+            
+            if faq_data:
+                # FAQ is an array of Q&A items
+                faq_items = []
+                for i, item in enumerate(faq_data, 1):
+                    question = item.get('question', 'N/A')
+                    answer = item.get('answer', 'N/A')
+                    faq_items.append(f"Q{i}: {question}\nA{i}: {answer}")
+                
+                faq_content = "\n\n".join(faq_items)
+                
+                console.print(Panel.fit(
+                    f"[bold green]ProLab FAQ[/bold green]\n\n{faq_content}",
+                    title=f"ProLab FAQ: {prolab_identifier}"
+                ))
+            else:
+                console.print("[yellow]No FAQ items found[/yellow]")
+        else:
+            console.print("[yellow]No FAQ found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@prolabs.command()
+@click.argument('prolab_identifier')
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def rating(prolab_identifier, debug, json_output):
+    """Get prolab rating"""
+    try:
+        api_client = HTBAPIClient()
+        prolabs_module = ProlabsModule(api_client)
+        
+        # Resolve identifier to ID
+        prolab_id = prolabs_module.resolve_prolab_identifier_to_id(prolab_identifier)
+        if prolab_id is None:
+            console.print(f"[yellow]ProLab '{prolab_identifier}' not found[/yellow]")
+            return
+        
+        result = prolabs_module.get_prolab_rating(prolab_id)
+        
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: ProLab Rating", json_output)
+            return
+        
+        if result and 'data' in result:
+            rating_data = result['data']
+            
+            console.print(Panel.fit(
+                f"[bold green]ProLab Rating[/bold green]\n"
+                f"Rating: {rating_data.get('rating', 'N/A') or 'N/A'}",
+                title=f"ProLab Rating: {prolab_identifier}"
+            ))
+        else:
+            console.print("[yellow]No rating information found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@prolabs.command()
+@click.argument('prolab_identifier')
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def reviews_overview(prolab_identifier, debug, json_output):
+    """Get prolab reviews overview"""
+    try:
+        api_client = HTBAPIClient()
+        prolabs_module = ProlabsModule(api_client)
+        
+        # Resolve identifier to ID
+        prolab_id = prolabs_module.resolve_prolab_identifier_to_id(prolab_identifier)
+        if prolab_id is None:
+            console.print(f"[yellow]ProLab '{prolab_identifier}' not found[/yellow]")
+            return
+        
+        result = prolabs_module.get_prolab_reviews_overview(prolab_id)
+        
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: ProLab Reviews Overview", json_output)
+            return
+        
+        if result and 'data' in result:
+            overview_data = result['data']
+            
+            console.print(Panel.fit(
+                f"[bold green]ProLab Reviews Overview[/bold green]\n"
+                f"Total Ratings: {overview_data.get('total_number_of_ratings', 'N/A') or 'N/A'}\n"
+                f"Average Rating: {overview_data.get('users_average_rating', 'N/A') or 'N/A'}\n"
+                f"Recent Feedback: {len(overview_data.get('feedbacks', []))} reviews",
+                title=f"ProLab Reviews Overview: {prolab_identifier}"
+            ))
+        else:
+            console.print("[yellow]No reviews overview found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@prolabs.command()
+@click.argument('prolab_identifier')
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def subscription(prolab_identifier, debug, json_output):
+    """Get prolab subscription information"""
+    try:
+        api_client = HTBAPIClient()
+        prolabs_module = ProlabsModule(api_client)
+        
+        # Resolve identifier to ID
+        prolab_id = prolabs_module.resolve_prolab_identifier_to_id(prolab_identifier)
+        if prolab_id is None:
+            console.print(f"[yellow]ProLab '{prolab_identifier}' not found[/yellow]")
+            return
+        
+        result = prolabs_module.get_prolab_subscription(prolab_id)
+        
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: ProLab Subscription", json_output)
+            return
+        
+        if result and 'data' in result:
+            subscription_data = result['data']
+            
+            # Handle null/false values properly
+            type_value = subscription_data.get('type')
+            type_display = type_value if type_value is not None else 'Not specified'
+            
+            ends_at_value = subscription_data.get('ends_at')
+            ends_at_display = ends_at_value if ends_at_value and ends_at_value != False else 'No expiration'
+            
+            console.print(Panel.fit(
+                f"[bold green]ProLab Subscription[/bold green]\n"
+                f"Active: {'Yes' if subscription_data.get('active') else 'No'}\n"
+                f"Type: {type_display}\n"
+                f"Name: {subscription_data.get('name', 'N/A') or 'N/A'}\n"
+                f"Renews At: {subscription_data.get('renews_at', 'N/A') or 'N/A'}\n"
+                f"Ends At: {ends_at_display}\n"
+                f"Period: {subscription_data.get('subscription_period', 'N/A') or 'N/A'}",
+                title=f"ProLab Subscription: {prolab_identifier}"
+            ))
+        else:
+            console.print("[yellow]No subscription information found[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")

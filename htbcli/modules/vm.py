@@ -361,26 +361,31 @@ def reset(machine_identifier):
             vm_status = vm_module.machines_module.get_vm_status()
             if vm_status and vm_status.get('info'):
                 active_info = vm_status['info']
-                machine_identifier = active_info.get('name')
-                if machine_identifier:
-                    console.print(f"[blue]No machine specified, using active machine: {machine_identifier}[/blue]")
+                machine_id = active_info.get('id')
+                machine_name = active_info.get('name')
+                if machine_id and machine_name:
+                    console.print(f"[blue]No machine specified, using active machine: {machine_name} (ID: {machine_id})[/blue]")
+                    # Use the machine ID directly instead of searching
+                    result = vm_module.reset_vm(machine_id)
                 else:
                     console.print("[red]Error: No active machine found and no machine specified[/red]")
                     return
             else:
                 console.print("[red]Error: No active machine found and no machine specified[/red]")
                 return
-        
-        result = vm_module.reset_vm(machine_identifier)
+        else:
+            # Machine identifier provided, use the existing logic
+            result = vm_module.reset_vm(machine_identifier)
         
         if result and 'error' in result:
             console.print(f"[red]Error: {result['error']}[/red]")
             return
         
         if result and 'message' in result:
+            machine_display = machine_name if machine_identifier is None else machine_identifier
             console.print(Panel.fit(
                 f"[bold green]VM Reset Successfully[/bold green]\n"
-                f"Machine: {machine_identifier}\n"
+                f"Machine: {machine_display}\n"
                 f"Message: {result['message']}",
                 title="VM Reset"
             ))
@@ -402,26 +407,31 @@ def terminate(machine_identifier):
             vm_status = vm_module.machines_module.get_vm_status()
             if vm_status and vm_status.get('info'):
                 active_info = vm_status['info']
-                machine_identifier = active_info.get('name')
-                if machine_identifier:
-                    console.print(f"[blue]No machine specified, using active machine: {machine_identifier}[/blue]")
+                machine_id = active_info.get('id')
+                machine_name = active_info.get('name')
+                if machine_id and machine_name:
+                    console.print(f"[blue]No machine specified, using active machine: {machine_name} (ID: {machine_id})[/blue]")
+                    # Use the machine ID directly instead of searching
+                    result = vm_module.terminate_vm(machine_id)
                 else:
                     console.print("[red]Error: No active machine found and no machine specified[/red]")
                     return
             else:
                 console.print("[red]Error: No active machine found and no machine specified[/red]")
                 return
-        
-        result = vm_module.terminate_vm(machine_identifier)
+        else:
+            # Machine identifier provided, use the existing logic
+            result = vm_module.terminate_vm(machine_identifier)
         
         if result and 'error' in result:
             console.print(f"[red]Error: {result['error']}[/red]")
             return
         
         if result and 'message' in result:
+            machine_display = machine_name if machine_identifier is None else machine_identifier
             console.print(Panel.fit(
                 f"[bold green]VM Terminated Successfully[/bold green]\n"
-                f"Machine: {machine_identifier}\n"
+                f"Machine: {machine_display}\n"
                 f"Message: {result['message']}",
                 title="VM Terminate"
             ))
