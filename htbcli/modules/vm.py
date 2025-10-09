@@ -9,6 +9,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
+import pyperclip
 
 from ..api_client import HTBAPIClient
 from ..base_command import handle_debug_option
@@ -16,6 +17,16 @@ from .machines import MachinesModule
 from .connection import ConnectionModule
 
 console = Console()
+
+def copy_ip_to_clipboard(ip_address: str) -> bool:
+    """Copy IP address to clipboard with error handling"""
+    try:
+        pyperclip.copy(ip_address)
+        console.print(f"[green]✓ IP address copied to clipboard: {ip_address}[/green]")
+        return True
+    except Exception as e:
+        console.print(f"[yellow]Warning: Could not copy IP to clipboard: {e}[/yellow]")
+        return False
 
 class VMModule:
     """Module for handling VM spawning-related API calls"""
@@ -135,6 +146,10 @@ class VMModule:
                             console.print(f"[green]IP Address: {ip_address}[/green]")
                             console.print(f"[green]Machine: {info.get('name', 'N/A')}[/green]")
                             console.print(f"[green]Expires at: {info.get('expires_at', 'N/A')}[/green]")
+                            
+                            # Copy IP to clipboard
+                            copy_ip_to_clipboard(ip_address)
+                            
                             return {
                                 "success": True,
                                 "ip": ip_address,
@@ -267,7 +282,7 @@ def spawn(machine_identifier, no_wait, max_wait, vpn_server):
             if wait_result.get('success'):
                 console.print(Panel.fit(
                     f"[bold green]VM Ready![/bold green]\n"
-                    f"IP Address: {wait_result['ip']}\n"
+                    f"IP Address: {wait_result['ip']} (copied to clipboard)\n"
                     f"Machine: {wait_result['machine_name']}\n"
                     f"Expires at: {wait_result['expires_at']}\n"
                     f"Wait time: {wait_result['wait_time']:.1f}s\n"
@@ -310,7 +325,7 @@ def wait(machine_identifier, max_wait):
         if wait_result.get('success'):
             console.print(Panel.fit(
                 f"[bold green]VM Ready![/bold green]\n"
-                f"IP Address: {wait_result['ip']}\n"
+                f"IP Address: {wait_result['ip']} (copied to clipboard)\n"
                 f"Machine: {wait_result['machine_name']}\n"
                 f"Expires at: {wait_result['expires_at']}\n"
                 f"Wait time: {wait_result['wait_time']:.1f}s\n"

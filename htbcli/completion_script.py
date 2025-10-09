@@ -281,7 +281,7 @@ _htbcli_subcommands() {
                 'suggested:Get suggested challenges'
                 'activity:Get challenge activity'
                 'changelog:Get challenge changelog'
-                'download:Download challenge files'
+                'download:Download challenge files (accepts ID or name)'
                 'start:Start challenge'
                 'stop:Stop challenge'
                 'writeup:Get challenge writeup'

@@ -1070,13 +1070,20 @@ def changelog(challenge_identifier, responses, option):
         console.print(f"[red]Error: {e}[/red]")
 
 @challenges.command()
-@click.argument('challenge_id', type=int)
+@click.argument('challenge_identifier')
 @click.option('--output', '-o', help='Output filename for the downloaded file')
-def download(challenge_id, output):
-    """Download challenge files"""
+def download(challenge_identifier, output):
+    """Download challenge files (accepts challenge ID or name)"""
     try:
         api_client = HTBAPIClient()
         challenges_module = ChallengesModule(api_client)
+        
+        # Resolve challenge identifier to challenge ID
+        challenge_id = challenges_module.resolve_challenge_id(challenge_identifier)
+        if challenge_id is None:
+            console.print(f"[red]Could not resolve challenge identifier: {challenge_identifier}[/red]")
+            return
+        
         result = challenges_module.get_challenge_download(challenge_id)
         
         if result:
