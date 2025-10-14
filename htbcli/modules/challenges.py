@@ -403,6 +403,91 @@ class ChallengesModule:
     def update_todo(self, product: str, product_id: int, todo_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update todo list"""
         return self.api.post(f"/{product}/todo/update/{product_id}", json_data=todo_data)
+    
+    def cleanup_solved_todo_challenges(self) -> Dict[str, Any]:
+        """Check todo challenges and remove solved ones from todo list using efficient comparison"""
+        cleanup_results = {
+            'checked': 0,
+            'removed': 0,
+            'errors': 0,
+            'removed_challenges': []
+        }
+        
+        try:
+            # Get all challenges in todo list
+            console.print("[blue]Fetching todo challenges...[/blue]")
+            todo_result = self.get_challenges(todo=1, per_page=50)
+            
+            if not todo_result or 'data' not in todo_result:
+                console.print("[yellow]No challenges found in todo list[/yellow]")
+                return cleanup_results
+            
+            todo_challenges = todo_result['data']
+            cleanup_results['checked'] = len(todo_challenges)
+            
+            console.print(f"[blue]Found {len(todo_challenges)} challenges in todo list[/blue]")
+            
+            # Get completed challenges that are also in todo list
+            console.print("[blue]Fetching completed challenges in todo list...[/blue]")
+            completed_todo_result = self.get_challenges(todo=1, status='complete', per_page=50)
+            
+            if not completed_todo_result or 'data' not in completed_todo_result:
+                console.print("[yellow]No completed challenges found in todo list[/yellow]")
+                return cleanup_results
+            
+            completed_todo_challenges = completed_todo_result['data']
+            console.print(f"[blue]Found {len(completed_todo_challenges)} completed challenges in todo list[/blue]")
+            
+            # These are the challenges that need to be removed from todo list
+            challenges_to_remove = []
+            for challenge in completed_todo_challenges:
+                challenge_id = challenge.get('id')
+                challenge_name = challenge.get('name', 'Unknown')
+                
+                if challenge_id:
+                    challenges_to_remove.append({
+                        'id': challenge_id,
+                        'name': challenge_name
+                    })
+            
+            console.print(f"[blue]Found {len(challenges_to_remove)} solved challenges in todo list[/blue]")
+            
+            # Remove solved challenges from todo list
+            for i, challenge in enumerate(challenges_to_remove, 1):
+                challenge_id = challenge['id']
+                challenge_name = challenge['name']
+                
+                console.print(f"[blue]Removing challenge {i}/{len(challenges_to_remove)}: {challenge_name} (ID: {challenge_id})[/blue]")
+                
+                try:
+                    # Remove from todo list
+                    todo_data = {"isTodo": False}
+                    result = self.update_todo("challenge", challenge_id, todo_data)
+                    
+                    if result:
+                        cleanup_results['removed'] += 1
+                        cleanup_results['removed_challenges'].append({
+                            'id': challenge_id,
+                            'name': challenge_name
+                        })
+                        console.print(f"[green]✓[/green] Removed solved challenge '{challenge_name}' (ID: {challenge_id}) from todo list")
+                    else:
+                        cleanup_results['errors'] += 1
+                        console.print(f"[yellow]Warning: Could not remove challenge '{challenge_name}' (ID: {challenge_id}) from todo list[/yellow]")
+                
+                except Exception as e:
+                    cleanup_results['errors'] += 1
+                    console.print(f"[yellow]Warning: Error removing challenge '{challenge_name}' (ID: {challenge_id}): {e}[/yellow]")
+                    continue
+            
+            if len(challenges_to_remove) == 0:
+                console.print("[blue]No solved challenges found in todo list[/blue]")
+            
+        except Exception as e:
+            console.print(f"[red]Error during todo cleanup: {e}[/red]")
+            cleanup_results['errors'] += 1
+        
+        return cleanup_results
 
 # Click commands
 @click.group()
@@ -436,11 +521,14 @@ def challenges():
 @click.option('--todo', 
               is_flag=True,
               help='Show only challenges in todo list')
+@click.option('--clean-solved', 
+              is_flag=True,
+              help='Clean up solved challenges from todo list (may cause rate limiting with large lists)')
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
-def list_challenges(page, per_page, status, state, sort_by, sort_type, difficulty, category, todo, responses, option, debug, json_output):
+def list_challenges(page, per_page, status, state, sort_by, sort_type, difficulty, category, todo, clean_solved, responses, option, debug, json_output):
     """List challenges with filtering options"""
     try:
         api_client = HTBAPIClient()
@@ -465,6 +553,19 @@ def list_challenges(page, per_page, status, state, sort_by, sort_type, difficult
         
         # Convert todo flag to integer if set
         todo_value = 1 if todo else None
+        
+        # If clean-solved flag is used, clean up solved challenges from todo list
+        if clean_solved:
+            console.print("[blue]Checking for solved challenges in todo list...[/blue]")
+            cleanup_results = challenges_module.cleanup_solved_todo_challenges()
+            
+            if cleanup_results['removed'] > 0:
+                console.print(f"[green]Cleaned up {cleanup_results['removed']} solved challenge(s) from todo list[/green]")
+            elif cleanup_results['checked'] > 0:
+                console.print(f"[blue]No solved challenges found in todo list ({cleanup_results['checked']} challenges checked)[/blue]")
+            
+            if cleanup_results['errors'] > 0:
+                console.print(f"[yellow]Warning: {cleanup_results['errors']} error(s) occurred during cleanup[/yellow]")
         
         result = challenges_module.get_challenges(
             page=page, 
@@ -1510,5 +1611,120 @@ def reviews_user(challenge_identifier, debug, json_output):
             console.print(table)
         else:
             console.print("[yellow]No user reviews found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@challenges.command()
+@click.argument('challenge_identifier')
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def todo_add(challenge_identifier, debug, json_output):
+    """Add a challenge to your todo list"""
+    try:
+        api_client = HTBAPIClient()
+        challenges_module = ChallengesModule(api_client)
+        
+        # Resolve challenge identifier to challenge ID
+        challenge_id = challenges_module.resolve_challenge_id(challenge_identifier)
+        if challenge_id is None:
+            console.print(f"[red]Could not resolve challenge identifier: {challenge_identifier}[/red]")
+            return
+        
+        # Add challenge to todo list
+        todo_data = {"isTodo": True}
+        result = challenges_module.update_todo("challenge", challenge_id, todo_data)
+        
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: Add Challenge to Todo", json_output)
+            return
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Challenge Added to Todo List[/bold green]\n"
+                f"Challenge ID: {challenge_id}\n"
+                f"Status: {result.get('info', 'Success') or 'Success'}",
+                title="Todo Add"
+            ))
+        else:
+            console.print("[yellow]No result from adding challenge to todo[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@challenges.command()
+@click.argument('challenge_identifier')
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def todo_remove(challenge_identifier, debug, json_output):
+    """Remove a challenge from your todo list"""
+    try:
+        api_client = HTBAPIClient()
+        challenges_module = ChallengesModule(api_client)
+        
+        # Resolve challenge identifier to challenge ID
+        challenge_id = challenges_module.resolve_challenge_id(challenge_identifier)
+        if challenge_id is None:
+            console.print(f"[red]Could not resolve challenge identifier: {challenge_identifier}[/red]")
+            return
+        
+        # Remove challenge from todo list
+        todo_data = {"isTodo": False}
+        result = challenges_module.update_todo("challenge", challenge_id, todo_data)
+        
+        if debug or json_output:
+            handle_debug_option(debug, result, "Debug: Remove Challenge from Todo", json_output)
+            return
+        
+        if result:
+            console.print(Panel.fit(
+                f"[bold green]Challenge Removed from Todo List[/bold green]\n"
+                f"Challenge ID: {challenge_id}\n"
+                f"Status: {result.get('info', 'Success') or 'Success'}",
+                title="Todo Remove"
+            ))
+        else:
+            console.print("[yellow]No result from removing challenge from todo[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@challenges.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+def todo_cleanup(debug, json_output):
+    """Clean up solved challenges from your todo list"""
+    try:
+        api_client = HTBAPIClient()
+        challenges_module = ChallengesModule(api_client)
+        
+        console.print("[blue]Starting todo list cleanup...[/blue]")
+        cleanup_results = challenges_module.cleanup_solved_todo_challenges()
+        
+        if debug or json_output:
+            handle_debug_option(debug, cleanup_results, "Debug: Todo Cleanup Results", json_output)
+            return
+        
+        # Display summary
+        if cleanup_results['checked'] == 0:
+            console.print("[yellow]No challenges found in todo list[/yellow]")
+        else:
+            summary_lines = [
+                f"[bold green]Todo Cleanup Complete[/bold green]",
+                f"Challenges checked: {cleanup_results['checked']}",
+                f"Challenges removed: {cleanup_results['removed']}",
+                f"Errors encountered: {cleanup_results['errors']}"
+            ]
+            
+            if cleanup_results['removed_challenges']:
+                summary_lines.extend([
+                    "",
+                    f"[bold cyan]Removed Challenges:[/bold cyan]"
+                ])
+                for challenge in cleanup_results['removed_challenges']:
+                    summary_lines.append(f"  • {challenge['name']} (ID: {challenge['id']})")
+            
+            console.print(Panel.fit(
+                "\n".join(summary_lines),
+                title="Todo Cleanup Results"
+            ))
+            
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")

@@ -31,7 +31,8 @@ def get_challenge_subcommands() -> List[str]:
     return [
         'list-challenges', 'info', 'submit', 'categories', 'recommended',
         'suggested', 'activity', 'changelog', 'download', 'start', 'stop',
-        'writeup', 'writeup-official', 'mark-helpful', 'search', 'reviews-user'
+        'writeup', 'writeup-official', 'mark-helpful', 'search', 'reviews-user',
+        'todo-add', 'todo-remove', 'todo-cleanup'
     ]
 
 def get_user_subcommands() -> List[str]:

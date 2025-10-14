@@ -3,6 +3,7 @@ API Client for HTB CLI
 """
 
 import requests
+import time
 from typing import Dict, Any, Optional, Union
 from .config import Config
 
@@ -14,6 +15,8 @@ class HTBAPIClient:
         self.base_url = Config.BASE_URL_V5 if version == "v5" else Config.BASE_URL_V4
         self.session = requests.Session()
         self.session.headers.update(Config.get_auth_headers())
+        self.last_request_time = 0
+        self.min_request_interval = 1.0  # Minimum 1 second between requests to avoid rate limiting
     
     def _make_request(
         self, 
@@ -23,8 +26,16 @@ class HTBAPIClient:
         data: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """Make HTTP request to HTB API"""
+        """Make HTTP request to HTB API with rate limiting"""
         url = f"{self.base_url}{endpoint}"
+        
+        # Rate limiting: ensure minimum time between requests
+        current_time = time.time()
+        time_since_last_request = current_time - self.last_request_time
+        if time_since_last_request < self.min_request_interval:
+            time.sleep(self.min_request_interval - time_since_last_request)
+        
+        self.last_request_time = time.time()
         
         try:
             response = self.session.request(
