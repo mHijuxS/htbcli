@@ -603,7 +603,7 @@ def creators(machine_identifier, debug, json_output):
 @machines.command()
 @click.option('--page', default=1, help='Page number')
 @click.option('--per-page', default=20, help='Results per page')
-@click.option('--status', default='active', help='Machine status (active/retired)')
+@click.option('--status', default='active', type=click.Choice(['active', 'retired', 'all']), help='Machine status (active/retired/all). Use "all" to search both active and retired machines.')
 @click.option('--sort-by', 
               type=click.Choice(['release-date', 'name', 'user-owns', 'system-owns', 'rating', 'user-difficulty']),
               help='Sort by field')
@@ -645,7 +645,60 @@ def list_machines(page, per_page, status, sort_by, sort_type, difficulty, os, ta
         os_list = list(os) if os else None
         tags_list = list(tags) if tags else None
         
-        if status == 'retired':
+        # Handle 'all' status by searching both active and retired
+        if status == 'all':
+            console.print("[blue]Searching both active and retired machines...[/blue]")
+            
+            # Get active machines
+            active_result = machines_module.get_machine_paginated(
+                page=page, 
+                per_page=per_page, 
+                status='active',
+                sort_by=sort_by,
+                sort_type=sort_type,
+                difficulty=difficulty_list,
+                os=os_list,
+                tags=tags_list,
+                keyword=keyword,
+                show_completed=show_completed
+            )
+            
+            # Get retired machines
+            retired_result = machines_module.get_machine_list_retired_paginated(
+                page=page, 
+                per_page=per_page,
+                sort_by=sort_by,
+                sort_type=sort_type,
+                difficulty=difficulty_list,
+                os=os_list,
+                tags=tags_list,
+                keyword=keyword,
+                show_completed=show_completed,
+                free=free
+            )
+            
+            # Combine results
+            combined_data = []
+            if active_result and 'data' in active_result:
+                active_data = active_result['data']['data'] if isinstance(active_result['data'], dict) and 'data' in active_result['data'] else active_result['data']
+                if active_data:
+                    combined_data.extend(active_data)
+            
+            if retired_result and 'data' in retired_result:
+                retired_data = retired_result['data']['data'] if isinstance(retired_result['data'], dict) and 'data' in retired_result['data'] else retired_result['data']
+                if retired_data:
+                    combined_data.extend(retired_data)
+            
+            # Create combined result structure
+            result = {
+                'data': combined_data,
+                'meta': {
+                    'current_page': page,
+                    'per_page': per_page,
+                    'total': len(combined_data)
+                }
+            }
+        elif status == 'retired':
             result = machines_module.get_machine_list_retired_paginated(
                 page=page, 
                 per_page=per_page,
@@ -745,7 +798,26 @@ def list_machines(page, per_page, status, sort_by, sort_type, difficulty, os, ta
                 except Exception as e:
                     console.print(f"[yellow]Error processing machines data: {e}[/yellow]")
         else:
-            console.print("[yellow]No machines found[/yellow]")
+            # Provide helpful message when no machines found
+            filters_applied = []
+            if show_completed:
+                filters_applied.append(f"show_completed={show_completed}")
+            if difficulty_list:
+                filters_applied.append(f"difficulty={', '.join(difficulty_list)}")
+            if os_list:
+                filters_applied.append(f"os={', '.join(os_list)}")
+            if status:
+                filters_applied.append(f"status={status}")
+            
+            message = "[yellow]No machines found[/yellow]"
+            if filters_applied:
+                message += f" with filters: {', '.join(filters_applied)}"
+            
+            # Suggest checking retired machines if searching active
+            if status == 'active' or status is None:
+                message += "\n[yellow]Tip: Try adding [bold]--status retired[/bold] to search retired machines as well[/yellow]"
+            
+            console.print(message)
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
