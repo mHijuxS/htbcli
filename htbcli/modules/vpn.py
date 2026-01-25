@@ -632,7 +632,7 @@ def vpn(download, start, stop, list, files, switch, mode, name, server_id):
                 existing_files = []
                 
                 for vpn_file in vpn_files:
-                    if name in vpn_file['name']:
+                    if name.lower() in vpn_file['name'].lower():
                         existing_files.append(vpn_file['path'])
                 
                 # If files don't exist, download them
@@ -692,7 +692,7 @@ def vpn(download, start, stop, list, files, switch, mode, name, server_id):
                 # Look for VPN files that match the name exactly
                 matching_files = []
                 for file_path in vpn_module.vpn_dir.glob("*.ovpn"):
-                    if name in file_path.name:
+                    if name.lower() in file_path.name.lower():
                         matching_files.append(str(file_path))
                 
                 if not matching_files:
