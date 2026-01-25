@@ -31,13 +31,9 @@ class TeamModule:
         """Get team info by slug"""
         return self.api.get(f"/team/info/{team_slug}")
     
-    def get_team_list(self, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
+    def get_teams(self) -> Dict[str, Any]:
         """Get list of teams"""
-        params = {
-            "page": page,
-            "per_page": per_page
-        }
-        return self.api.get("/team/list", params=params)
+        return self.api.get("/rankings/teams")
     
     def get_team_recommended(self) -> Dict[str, Any]:
         """Get recommended teams"""
@@ -63,13 +59,7 @@ class TeamModule:
         """Get official team writeup"""
         return self.api.get(f"/team/{team_id}/writeup/official")
     
-    def get_teams(self, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
-        """Get list of teams (alternative endpoint)"""
-        params = {
-            "page": page,
-            "per_page": per_page
-        }
-        return self.api.get("/teams", params=params)
+
 
 # Click commands
 @click.group()
@@ -78,18 +68,22 @@ def team():
     pass
 
 @team.command()
+@click.option('--country', help='Filter by country')
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def list_team(page, per_page, responses, option):
+def list_team(country, responses, option):
     """List teams"""
     try:
         api_client = HTBAPIClient()
         team_module = TeamModule(api_client)
-        result = team_module.get_team_list(page, per_page)
+        result = team_module.get_teams()
         
         if result and 'data' in result:
-            teams_data = result['data']['data'] if isinstance(result['data'], dict) and 'data' in result['data'] else result['data']
+            teams_data = result['data']
             
+            if country:
+                teams_data = [team for team in teams_data if team.get('country') == country]
+
             if responses:
                 # Show all available fields for first team
                 if teams_data:
@@ -97,11 +91,11 @@ def list_team(page, per_page, responses, option):
                     console.print(Panel.fit(
                         f"[bold green]All Available Fields for Teams[/bold green]\n"
                         f"{chr(10).join([f'{k}: {v}' for k, v in first_team.items()])}",
-                        title=f"Teams - All Fields (First Item, Page {page})"
+                        title=f"Teams - All Fields (First Item)"
                     ))
             elif option:
                 # Show only specified fields
-                table = Table(title=f"Teams - Selected Fields (Page {page})")
+                table = Table(title=f"Teams - Selected Fields")
                 table.add_column("ID", style="cyan")
                 for field in option:
                     table.add_column(field.title(), style="green")
@@ -115,23 +109,21 @@ def list_team(page, per_page, responses, option):
                 console.print(table)
             else:
                 # Default view
-                table = Table(title=f"Teams (Page {page})")
+                table = Table(title=f"Teams")
                 table.add_column("ID", style="cyan")
                 table.add_column("Name", style="green")
-                table.add_column("Type", style="yellow")
-                table.add_column("Status", style="magenta")
-                table.add_column("Members", style="blue")
-                table.add_column("Points", style="red")
+                table.add_column("Rank", style="yellow")
+                table.add_column("Points", style="magenta")
+                table.add_column("Country", style="blue")
                 
                 try:
                     for team in teams_data:
                         table.add_row(
                             str(team.get('id', 'N/A') or 'N/A'),
                             str(team.get('name', 'N/A') or 'N/A'),
-                            str(team.get('type', 'N/A') or 'N/A'),
-                            str(team.get('status', 'N/A') or 'N/A'),
-                            str(team.get('members_count', 'N/A') or 'N/A'),
-                            str(team.get('points', 'N/A') or 'N/A')
+                            str(team.get('rank', 'N/A') or 'N/A'),
+                            str(team.get('points', 'N/A') or 'N/A'),
+                            str(team.get('country', 'N/A') or 'N/A'),
                         )
                     
                     console.print(table)

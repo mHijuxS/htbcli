@@ -115,7 +115,9 @@ class MachinesModule:
         if difficulty:
             params["difficulty[]"] = difficulty
         if os:
-            params["os"] = os
+            # Pass os as a list with [] notation to indicate it's an array parameter
+            # requests will format it as os[]=windows&os[]=linux or os[]=windows for single value
+            params["os[]"] = os
         if tags:
             params["tags"] = tags
         if keyword:
@@ -164,7 +166,9 @@ class MachinesModule:
         if difficulty:
             params["difficulty[]"] = difficulty
         if os:
-            params["os"] = os
+            # Pass os as a list with [] notation to indicate it's an array parameter
+            # requests will format it as os[]=windows&os[]=linux or os[]=windows for single value
+            params["os[]"] = os
         if tags:
             params["tags"] = tags
         if keyword:
