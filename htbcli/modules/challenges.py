@@ -312,7 +312,21 @@ class ChallengesModule:
             try:
                 return int(challenge_identifier)
             except ValueError:
-                # Search for challenge by name
+                # 1. Try to get info directly using the identifier as a slug/name
+                # This handles cases where search might fail but direct lookup works (like 'nothing without a cost')
+                try:
+                    info_result = self.get_challenge_info(challenge_identifier)
+                    if info_result:
+                        # Check for 'challenge' or 'info' key which usually contains the data
+                        challenge_data = info_result.get('challenge') or info_result.get('info')
+                        if challenge_data and 'id' in challenge_data:
+                            challenge_id = challenge_data['id']
+                            return challenge_id
+                except Exception:
+                    # Continue to search if direct lookup fails
+                    pass
+
+                # 2. Search for challenge by name
                 console.print(f"[blue]Searching for challenge: {challenge_identifier}[/blue]")
                 challenge_id = self.search_challenge_by_name(challenge_identifier)
                 if challenge_id:
