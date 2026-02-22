@@ -315,23 +315,33 @@ class VPNModule:
             console.print(f"[red]Error resolving VPN server name for ID {vpn_server_id}: {e}[/red]")
             return f"Server {vpn_server_id}"
     
-    def list_vpn_servers(self) -> bool:
-        """List VPN servers"""
+    def list_vpn_servers(self, product: Optional[str] = None) -> bool:
+        """List VPN servers. If product is None, list servers from all products (competitive, labs, starting_point, fortresses)."""
         try:
             console.print("[bold blue]Listing VPN servers...[/bold blue]")
-            servers = self.get_vpn_servers()
-            
-            if servers and isinstance(servers, dict) and 'data' in servers:
+            product_labels = {
+                'competitive': 'Competitive (Release Arena)',
+                'labs': 'Labs',
+                'starting_point': 'Starting Point',
+                'fortresses': 'Fortresses',
+            }
+            products_to_fetch = [product] if product else list(product_labels.keys())
+            table = Table(title="VPN Servers")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("Location", style="yellow")
+            table.add_column("Type", style="magenta")
+            table.add_column("Product", style="blue")
+            table.add_column("Clients", style="blue")
+            table.add_column("Full", style="red")
+            has_rows = False
+
+            for prod in products_to_fetch:
+                servers = self.get_vpn_servers(prod)
+                if not servers or not isinstance(servers, dict) or 'data' not in servers:
+                    continue
                 data = servers['data']
-                table = Table(title="VPN Servers")
-                table.add_column("ID", style="cyan")
-                table.add_column("Name", style="green")
-                table.add_column("Location", style="yellow")
-                table.add_column("Type", style="magenta")
-                table.add_column("Clients", style="blue")
-                table.add_column("Full", style="red")
-                
-                # Parse the nested structure
+                label = product_labels.get(prod, prod)
                 if 'options' in data:
                     for location, location_data in data['options'].items():
                         for server_type, type_data in location_data.items():
@@ -342,16 +352,19 @@ class VPNModule:
                                         str(server_info.get('friendly_name', 'N/A')),
                                         str(server_info.get('location', 'N/A')),
                                         str(type_data.get('name', 'N/A')),
+                                        label,
                                         str(server_info.get('current_clients', 'N/A')),
                                         "Yes" if server_info.get('full', False) else "No"
                                     )
-                
+                                    has_rows = True
+
+            if has_rows:
                 console.print(table)
                 return True
             else:
-                console.print(f"[yellow]No VPN servers found. Response: {servers}[/yellow]")
+                console.print("[yellow]No VPN servers found.[/yellow]")
                 return False
-                
+
         except Exception as e:
             console.print(f"[red]Error listing VPN servers: {e}[/red]")
             return False
@@ -532,10 +545,11 @@ class VPNModule:
 @click.option('--list', is_flag=True, help='List VPNs')
 @click.option('--files', is_flag=True, help='List downloaded VPN files')
 @click.option('--switch', is_flag=True, help='Switch VPN server')
+@click.option('--product', '-p', type=click.Choice(['labs', 'starting_point', 'fortresses', 'competitive']), default=None, help='Filter list by product (default: show all)')
 @click.option('--mode', '-m', type=click.Choice(['labs', 'sp', 'fortresses', 'prolabs', 'endgames', 'competitive']), help='Mode')
 @click.option('--name', '-n', help='VPN name to start (e.g., "EU VIP 7")')
 @click.option('--server-id', type=int, help='Server ID to switch to (use with --switch)')
-def vpn(download, start, stop, list, files, switch, mode, name, server_id):
+def vpn(download, start, stop, list, files, switch, product, mode, name, server_id):
     """Interact with HackTheBox VPNs"""
     try:
         api_client = HTBAPIClient()
@@ -543,7 +557,7 @@ def vpn(download, start, stop, list, files, switch, mode, name, server_id):
         
         # Handle list command
         if list:
-            vpn_module.list_vpn_servers()
+            vpn_module.list_vpn_servers(product=product)
             return
         
         # Handle files command
