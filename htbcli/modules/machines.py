@@ -6,9 +6,12 @@ import click
 import sys
 import json
 from typing import Dict, Any, Optional, Union
-from rich.console import Console
+from rich.console import Console, Group
 from rich.table import Table
 from rich.panel import Panel
+from rich.text import Text
+from rich.rule import Rule
+from rich.progress_bar import ProgressBar
 
 from ..api_client import HTBAPIClient
 from ..base_command import handle_debug_option
@@ -243,12 +246,49 @@ class MachinesModule:
     
     def get_machines_adventure(self, machine_id: int) -> Dict[str, Any]:
         """Get machines adventure"""
-        return self.api.get(f"/machines/adventure/{machine_id}")
-    
+        return self.api.get(f"/machines/{machine_id}/adventure")
+
     def get_machines_tasks(self, machine_id: int) -> Dict[str, Any]:
         """Get machines tasks"""
-        return self.api.get(f"/machines/tasks/{machine_id}")
-    
+        return self.api.get(f"/machines/{machine_id}/tasks")
+
+    def resolve_machine_name_and_id(self, machine_identifier: Union[int, str]) -> Optional[Dict[str, Any]]:
+        """Resolve machine identifier to both ID and name/slug by fetching profile data.
+        Returns dict with 'id', 'name', 'isGuidedEnabled', and full 'info' from profile."""
+        machine_id = self.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            return None
+
+        # Try to get machine profile using the identifier as slug if it's a string
+        info = None
+        if isinstance(machine_identifier, str) and not machine_identifier.isdigit():
+            try:
+                result = self.get_machine_profile(machine_identifier.lower())
+                if result and 'info' in result:
+                    info = result['info']
+            except Exception:
+                pass
+
+        # If we couldn't get profile by slug, try active machine or search
+        if info is None:
+            try:
+                # Try getting active machine info
+                active = self.get_machine_active()
+                if active and active.get('info') and active['info'].get('id') == machine_id:
+                    name = active['info'].get('name', '').lower()
+                    result = self.get_machine_profile(name)
+                    if result and 'info' in result:
+                        info = result['info']
+            except Exception:
+                pass
+
+        return {
+            'id': machine_id,
+            'name': info.get('name', str(machine_id)) if info else str(machine_id),
+            'isGuidedEnabled': info.get('isGuidedEnabled', False) if info else False,
+            'info': info
+        }
+
     def search_machine_by_name(self, machine_name: str, max_pages: int = 20) -> Optional[int]:
         """Search for a machine by name using platform search API and return its ID"""
         try:
@@ -1692,29 +1732,69 @@ def writeup(machine_identifier, debug, json_output, output):
 @machines.command()
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
-
+@click.option('--show-hints', is_flag=True, help='Show hints for pending steps')
 @click.argument('machine_identifier')
-def adventure(machine_identifier, debug, json_output):
-    """Get machine adventure (accepts machine ID or name)"""
+def adventure(machine_identifier, debug, json_output, show_hints):
+    """Get machine adventure steps (accepts machine ID or name)"""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
-        
+
         # Resolve machine identifier to machine ID
         machine_id = machines_module.resolve_machine_id(machine_identifier)
         if machine_id is None:
             console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
             return
-        
+
         result = machines_module.get_machines_adventure(machine_id)
-        
-        if result:
-            console.print(Panel.fit(
-                f"[bold green]Machine Adventure[/bold green]\n"
-                f"Machine ID: {machine_id}\n"
-                f"Data: {result}",
-                title="Machine Adventure"
-            ))
+
+        if handle_debug_option(debug, result, f"Debug: Machine Adventure API Response (ID: {machine_id})", json_output):
+            return
+
+        if result and 'data' in result:
+            steps = result['data']
+
+            if not steps:
+                console.print("[yellow]No adventure steps found for this machine.[/yellow]")
+                return
+
+            completed_count = sum(1 for s in steps if s.get('completed'))
+            total_count = len(steps)
+
+            table = Table(title=f"Machine Adventure (ID: {machine_id}) — {completed_count}/{total_count} completed")
+            table.add_column("#", style="dim")
+            table.add_column("Title", style="green")
+            table.add_column("Description", style="yellow", max_width=45)
+            table.add_column("Type", style="magenta")
+            table.add_column("Flag Format", style="dim")
+            table.add_column("Hint", style="cyan", max_width=30)
+            table.add_column("Status", style="bold")
+
+            for idx, step in enumerate(steps, 1):
+                completed = step.get('completed', False)
+                status = "[green]✓ Done[/green]" if completed else "[red]✗ Pending[/red]"
+
+                task_type = step.get('type', {})
+                if isinstance(task_type, dict):
+                    type_text = task_type.get('text', 'N/A')
+                else:
+                    type_text = str(task_type) if task_type else 'N/A'
+
+                hint = step.get('hint', '') or ''
+                if hint and not show_hints and not completed:
+                    hint = "[dim]--show-hints[/dim]"
+
+                table.add_row(
+                    str(idx),
+                    str(step.get('title', 'N/A') or 'N/A'),
+                    str(step.get('description', '') or ''),
+                    str(type_text),
+                    str(step.get('masked_flag', '') or ''),
+                    hint if completed or show_hints else "[dim]--show-hints[/dim]" if step.get('hint') else '',
+                    status
+                )
+
+            console.print(table)
         else:
             console.print("[yellow]No adventure data found[/yellow]")
     except Exception as e:
@@ -1810,34 +1890,408 @@ def tasks(machine_identifier, debug, json_output):
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
-        
+
         # Resolve machine identifier to machine ID
         machine_id = machines_module.resolve_machine_id(machine_identifier)
         if machine_id is None:
             console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
             return
-        
+
         result = machines_module.get_machines_tasks(machine_id)
-        
+
+        if handle_debug_option(debug, result, f"Debug: Machine Tasks API Response (ID: {machine_id})", json_output):
+            return
+
         if result and 'data' in result:
             tasks_data = result['data']
-            
-            table = Table(title=f"Machine Tasks (ID: {machine_id})")
+
+            if not tasks_data:
+                console.print("[yellow]No tasks found for this machine. Guided mode may not be enabled.[/yellow]")
+                return
+
+            completed_count = sum(1 for t in tasks_data if t.get('completed'))
+            total_count = len(tasks_data)
+
+            table = Table(title=f"Machine Tasks (ID: {machine_id}) — {completed_count}/{total_count} completed")
+            table.add_column("#", style="dim")
             table.add_column("ID", style="cyan")
             table.add_column("Title", style="green")
-            table.add_column("Description", style="yellow")
-            table.add_column("Points", style="magenta")
-            
-            for task in tasks_data:
+            table.add_column("Description", style="yellow", max_width=50)
+            table.add_column("Type", style="magenta")
+            table.add_column("Flag Format", style="dim")
+            table.add_column("Status", style="bold")
+
+            for idx, task in enumerate(tasks_data, 1):
+                task_type = task.get('type', {})
+                if isinstance(task_type, dict):
+                    type_text = task_type.get('text', 'N/A')
+                else:
+                    type_text = str(task_type) if task_type else 'N/A'
+
+                completed = task.get('completed', False)
+                status = "[green]✓ Done[/green]" if completed else "[red]✗ Pending[/red]"
+
                 table.add_row(
+                    str(idx),
                     str(task.get('id', 'N/A') or 'N/A'),
                     str(task.get('title', 'N/A') or 'N/A'),
-                    str(task.get('description', 'N/A') or 'N/A'),
-                    str(task.get('points', 'N/A') or 'N/A')
+                    str(task.get('description', '') or ''),
+                    str(type_text),
+                    str(task.get('masked_flag', '') or ''),
+                    status
                 )
-            
+
             console.print(table)
         else:
             console.print("[yellow]No tasks found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command()
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+@click.option('--show-hints', is_flag=True, help='Show hints for pending tasks')
+@click.argument('machine_identifier')
+def guided(machine_identifier, debug, json_output, show_hints):
+    """Interactive guided mode for retired machines. Shows step-by-step tasks to solve the machine."""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+
+        # Resolve machine identifier to ID and get profile info
+        machine_data = machines_module.resolve_machine_name_and_id(machine_identifier)
+        if machine_data is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+
+        machine_id = machine_data['id']
+        machine_name = machine_data['name']
+        is_guided = machine_data.get('isGuidedEnabled', False)
+
+        if not is_guided:
+            console.print(f"[yellow]Guided mode is not enabled for machine '{machine_name}' (ID: {machine_id}).[/yellow]")
+            console.print("[dim]Guided mode is typically available for retired machines. Trying to fetch tasks anyway...[/dim]")
+
+        # Fetch both tasks and adventure data
+        tasks_result = machines_module.get_machines_tasks(machine_id)
+        adventure_result = machines_module.get_machines_adventure(machine_id)
+
+        if debug or json_output:
+            combined = {"tasks": tasks_result, "adventure": adventure_result}
+            handle_debug_option(debug, combined, f"Debug: Guided Mode Data (ID: {machine_id})", json_output)
+            return
+
+        # Prefer tasks data (has richer structure with hints, prerequisites), fall back to adventure
+        tasks_data = tasks_result.get('data', []) if tasks_result else []
+        adventure_data = adventure_result.get('data', []) if adventure_result else []
+
+        # Use tasks data if available (richer), otherwise adventure
+        steps = tasks_data if tasks_data else adventure_data
+
+        if not steps:
+            console.print(f"[yellow]No guided steps found for machine '{machine_name}' (ID: {machine_id}).[/yellow]")
+            console.print("[dim]This machine may not support guided mode.[/dim]")
+            return
+
+        completed_count = sum(1 for s in steps if s.get('completed'))
+        total_count = len(steps)
+        task_steps = [s for s in steps if s.get('type', {}).get('text') == 'task']
+        flag_steps = [s for s in steps if s.get('type', {}).get('text') in ('user', 'root')]
+
+        # --- Header ---
+        if total_count > 0:
+            progress_pct = (completed_count / total_count) * 100
+
+            if completed_count == total_count:
+                bar_style = "green"
+                status_label = "[bold green]COMPLETED[/bold green]"
+            elif completed_count > 0:
+                bar_style = "yellow"
+                status_label = "[bold yellow]IN PROGRESS[/bold yellow]"
+            else:
+                bar_style = "red"
+                status_label = "[bold red]NOT STARTED[/bold red]"
+
+            # Machine info line
+            info = machine_data.get('info') or {}
+            os_name = info.get('os', '')
+            difficulty = info.get('difficultyText', '')
+            info_parts = [f"[bold white]{machine_name}[/bold white]"]
+            if os_name:
+                info_parts.append(f"[dim]{os_name}[/dim]")
+            if difficulty:
+                info_parts.append(f"[dim]{difficulty}[/dim]")
+            info_parts.append(f"[dim]ID: {machine_id}[/dim]")
+
+            progress_bar = ProgressBar(total=total_count, completed=completed_count, width=40)
+
+            header_content = Group(
+                Text.from_markup(" | ".join(info_parts)),
+                Text(""),
+                Group(
+                    progress_bar,
+                    Text.from_markup(f"  {completed_count}/{total_count} tasks  {status_label}"),
+                ),
+                Text(""),
+                Text.from_markup(f"[dim]htbcli machines submit-task {machine_identifier} <flag>[/dim]"),
+            )
+
+            console.print(Panel(
+                header_content,
+                title="[bold cyan]GUIDED MODE[/bold cyan]",
+                border_style="cyan",
+                padding=(1, 2),
+            ))
+            console.print()
+
+        # --- Build a prereq map for display: task_id -> step number ---
+        id_to_step = {}
+        for idx, step in enumerate(steps, 1):
+            if step.get('id') is not None:
+                id_to_step[step['id']] = idx
+
+        # --- Categorize steps into sections ---
+        # Group: task questions before user flag, user flag, task questions before root, root flag
+        sections = []
+        current_section_tasks = []
+        for step in steps:
+            type_text = step.get('type', {}).get('text', 'task') if isinstance(step.get('type'), dict) else 'task'
+            if type_text in ('user', 'root'):
+                if current_section_tasks:
+                    sections.append(('tasks', current_section_tasks))
+                    current_section_tasks = []
+                sections.append(('flag', [step]))
+            else:
+                current_section_tasks.append(step)
+        if current_section_tasks:
+            sections.append(('tasks', current_section_tasks))
+
+        step_num = 0
+        for section_type, section_steps in sections:
+            if section_type == 'tasks':
+                # --- Task questions section ---
+                # Determine section label based on what comes after
+                section_idx = sections.index((section_type, section_steps))
+                if section_idx + 1 < len(sections):
+                    next_section = sections[section_idx + 1]
+                    if next_section[0] == 'flag':
+                        flag_type = next_section[1][0].get('type', {}).get('text', '')
+                        if flag_type == 'user':
+                            section_title = "ENUMERATION & EXPLOITATION"
+                        elif flag_type == 'root':
+                            section_title = "PRIVILEGE ESCALATION"
+                        else:
+                            section_title = "TASKS"
+                    else:
+                        section_title = "TASKS"
+                else:
+                    section_title = "TASKS"
+
+                console.print(Rule(f"[bold]{section_title}[/bold]", style="dim"))
+                console.print()
+
+                for step in section_steps:
+                    step_num += 1
+                    completed = step.get('completed', False)
+                    title = step.get('title', 'Untitled')
+                    description = step.get('description', '')
+                    hint = step.get('hint', '')
+                    masked_flag = step.get('masked_flag', '')
+                    prereq_id = step.get('prerequisite_id')
+                    task_id = step.get('id')
+
+                    # Status indicator
+                    if completed:
+                        status_icon = "[bold green]  [/bold green]"
+                        num_style = "green"
+                        title_markup = f"[green]{title}[/green]"
+                    else:
+                        status_icon = "[bold red]  [/bold red]"
+                        num_style = "bold white"
+                        title_markup = f"[bold white]{title}[/bold white]"
+
+                    # Step number badge
+                    step_header = Text.from_markup(
+                        f" {status_icon} [{num_style}]{step_num:>2}[/{num_style}]  {title_markup}"
+                    )
+                    console.print(step_header)
+
+                    # Description
+                    if description:
+                        console.print(Text.from_markup(f"        [italic]{description}[/italic]"))
+
+                    # Metadata line
+                    meta_parts = []
+                    if masked_flag:
+                        meta_parts.append(f"[cyan]Flag: {masked_flag}[/cyan]")
+                    if prereq_id is not None and prereq_id in id_to_step:
+                        meta_parts.append(f"[dim]After step {id_to_step[prereq_id]}[/dim]")
+                    if task_id:
+                        meta_parts.append(f"[dim]#{task_id}[/dim]")
+                    if meta_parts:
+                        console.print(Text.from_markup("        " + "  |  ".join(meta_parts)))
+
+                    # Hint
+                    if hint and not completed:
+                        if show_hints:
+                            console.print(Text.from_markup(f"        [yellow]Hint:[/yellow] [dim italic]{hint}[/dim italic]"))
+                        else:
+                            console.print(Text.from_markup("        [dim]Hint available (--show-hints)[/dim]"))
+
+                    console.print()
+
+            elif section_type == 'flag':
+                # --- Flag submission step ---
+                for step in section_steps:
+                    step_num += 1
+                    completed = step.get('completed', False)
+                    title = step.get('title', 'Untitled')
+                    description = step.get('description', '')
+                    masked_flag = step.get('masked_flag', '')
+                    type_text = step.get('type', {}).get('text', '') if isinstance(step.get('type'), dict) else ''
+
+                    if type_text == 'user':
+                        flag_icon = "👤"
+                        flag_color = "magenta"
+                    else:
+                        flag_icon = "💀"
+                        flag_color = "red"
+
+                    if completed:
+                        border_style = "green"
+                        status_text = "[bold green]  OWNED[/bold green]"
+                    else:
+                        border_style = flag_color
+                        status_text = f"[bold {flag_color}]  PENDING[/bold {flag_color}]"
+
+                    flag_lines = [f"{flag_icon}  {status_text}"]
+                    if description:
+                        flag_lines.append(f"   [italic]{description}[/italic]")
+                    if masked_flag:
+                        flag_lines.append(f"   [dim]Format:[/dim] [cyan]{masked_flag}[/cyan]")
+
+                    console.print(Panel(
+                        "\n".join(flag_lines),
+                        title=f"[bold {flag_color}]Step {step_num}: {title}[/bold {flag_color}]",
+                        border_style=border_style,
+                        padding=(0, 2),
+                    ))
+                    console.print()
+
+        # --- Footer ---
+        if completed_count == total_count and total_count > 0:
+            console.print(Panel(
+                "[bold green]All tasks completed! Machine fully owned![/bold green]",
+                border_style="green",
+                padding=(0, 2),
+            ))
+        elif completed_count > 0 or completed_count == 0:
+            next_task = next((s for s in steps if not s.get('completed')), None)
+            if next_task:
+                next_title = next_task.get('title', 'Unknown')
+                next_desc = next_task.get('description', '')
+                next_flag = next_task.get('masked_flag', '')
+                footer_lines = [f"[bold cyan]Next:[/bold cyan] {next_title}"]
+                if next_desc:
+                    footer_lines.append(f"[dim]{next_desc}[/dim]")
+                if next_flag:
+                    footer_lines.append(f"[dim]Expected: [cyan]{next_flag}[/cyan][/dim]")
+                console.print(Panel(
+                    "\n".join(footer_lines),
+                    border_style="dim cyan",
+                    padding=(0, 2),
+                ))
+
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command(name='submit-task')
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+@click.argument('machine_identifier', required=False)
+@click.argument('flag', required=False)
+def submit_task(machine_identifier, flag, debug, json_output):
+    """Submit flag for a guided mode task. Uses active machine if no machine specified. Flag can be piped from stdin."""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+
+        # Handle argument parsing - if only one argument is provided, it's the flag
+        if machine_identifier is not None and flag is None:
+            flag = machine_identifier
+            machine_identifier = None
+
+        # Determine machine ID
+        machine_id = None
+        if machine_identifier is None:
+            machine_id = machines_module.get_active_machine_id()
+            if machine_id is None:
+                console.print("[red]No machine specified and no active machine found[/red]")
+                return
+        else:
+            machine_id = machines_module.resolve_machine_id(machine_identifier)
+            if machine_id is None:
+                console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+                return
+
+        # Get flag from argument or stdin
+        if flag is None:
+            if not sys.stdin.isatty():
+                flag = sys.stdin.read().strip()
+                if not flag:
+                    console.print("[red]No flag provided via stdin[/red]")
+                    return
+            else:
+                console.print("[red]No flag provided. Use: htbcli machines submit-task [machine] <flag>[/red]")
+                return
+
+        # Get tasks before submission to track progress
+        tasks_before = machines_module.get_machines_tasks(machine_id)
+        pending_before = set()
+        if tasks_before and 'data' in tasks_before:
+            pending_before = {t['id'] for t in tasks_before['data'] if not t.get('completed') and t.get('id')}
+
+        # Submit flag using the standard machine own endpoint
+        result = machines_module.submit_machine_flag(flag, machine_id)
+
+        if handle_debug_option(debug, result, f"Debug: Task Flag Submission (Machine ID: {machine_id})", json_output):
+            return
+
+        if result:
+            message = result.get('message', 'N/A')
+            console.print(Panel.fit(
+                f"[bold green]Flag Submission Result[/bold green]\n"
+                f"Machine ID: {machine_id}\n"
+                f"Message: {message}",
+                title="Task Flag Submission",
+                border_style="green"
+            ))
+
+            # Check which task was completed by comparing before/after
+            tasks_after = machines_module.get_machines_tasks(machine_id)
+            if tasks_after and 'data' in tasks_after:
+                tasks_data = tasks_after['data']
+                completed_now = {t['id'] for t in tasks_data if t.get('completed') and t.get('id')}
+                newly_completed = completed_now & pending_before
+
+                if newly_completed:
+                    for task in tasks_data:
+                        if task.get('id') in newly_completed:
+                            console.print(f"[green]✓[/green] Completed task: [bold]{task.get('title', 'Unknown')}[/bold]")
+
+                completed_count = sum(1 for t in tasks_data if t.get('completed'))
+                total_count = len(tasks_data)
+                console.print(f"\n[cyan]Progress: {completed_count}/{total_count} tasks completed[/cyan]")
+
+                if completed_count == total_count and total_count > 0:
+                    console.print("[bold green]🎉 All tasks completed! Machine fully owned![/bold green]")
+                else:
+                    next_task = next((t for t in tasks_data if not t.get('completed')), None)
+                    if next_task:
+                        console.print(f"[cyan]Next task:[/cyan] {next_task.get('title', 'Unknown')}")
+                        if next_task.get('masked_flag'):
+                            console.print(f"[dim]Expected flag format: {next_task.get('masked_flag')}[/dim]")
+        else:
+            console.print("[yellow]No result from flag submission[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
