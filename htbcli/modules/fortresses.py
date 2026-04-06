@@ -65,12 +65,9 @@ def list_fortresses():
             table.add_column("Flags", style="magenta", no_wrap=True)
             
             try:
-                # Convert object to list of fortresses
-                fortresses_list = []
-                for key, value in fortresses_data.items():
-                    if isinstance(value, dict):
-                        fortresses_list.append(value)
-                
+                # data is a list of fortress dicts
+                fortresses_list = fortresses_data if isinstance(fortresses_data, list) else list(fortresses_data.values()) if isinstance(fortresses_data, dict) else []
+
                 for fortress in fortresses_list:
                     fortress_id = str(fortress.get('id', 'N/A') or 'N/A')
                     fortress_name = str(fortress.get('name', 'N/A') or 'N/A')

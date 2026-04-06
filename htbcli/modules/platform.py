@@ -74,8 +74,8 @@ def announcements(responses, option):
         platform_module = PlatformModule(api_client)
         result = platform_module.get_announcements()
         
-        if result and 'data' in result:
-            announcements_data = result['data']
+        if result and ('announcements' in result or 'data' in result):
+            announcements_data = result.get('announcements') or result.get('data')
             
             if responses:
                 # Show all available fields for first announcement
@@ -132,8 +132,8 @@ def changelogs(responses, option):
         platform_module = PlatformModule(api_client)
         result = platform_module.get_changelogs()
         
-        if result and 'data' in result:
-            changelogs_data = result['data']
+        if result and ('changelogs' in result or 'data' in result):
+            changelogs_data = result.get('changelogs') or result.get('data')
             
             if responses:
                 # Show all available fields for first changelog
@@ -220,9 +220,7 @@ def content_stats(responses, option):
                 console.print(Panel.fit(
                     f"[bold green]Content Statistics[/bold green]\n"
                     f"Machines: {stats.get('machines', 'N/A') or 'N/A'}\n"
-                    f"Challenges: {stats.get('challenges', 'N/A') or 'N/A'}\n"
-                    f"Users: {stats.get('users', 'N/A') or 'N/A'}\n"
-                    f"Teams: {stats.get('teams', 'N/A') or 'N/A'}",
+                    f"Challenges: {stats.get('challenges', 'N/A') or 'N/A'}",
                     title="Content Stats"
                 ))
         else:
@@ -327,8 +325,9 @@ def navigation(responses, option):
                 # Default view
                 console.print(Panel.fit(
                     f"[bold green]Platform Navigation[/bold green]\n"
-                    f"Version: {nav_data.get('version', 'N/A') or 'N/A'}\n"
-                    f"Status: {nav_data.get('status', 'N/A') or 'N/A'}",
+                    f"SSO Linked: {nav_data.get('sso_linked', 'N/A')}\n"
+                    f"Ranking: {nav_data.get('ranking', 'N/A') or 'N/A'}\n"
+                    f"Season Ranking: {nav_data.get('season_ranking', 'N/A') or 'N/A'}",
                     title="Navigation Info"
                 ))
         else:
@@ -526,8 +525,8 @@ def sidebar_announcement(responses, option):
         platform_module = PlatformModule(api_client)
         result = platform_module.get_sidebar_announcement()
         
-        if result and 'data' in result:
-            announcement = result['data']
+        if result and ('announcement' in result or 'data' in result):
+            announcement = result.get('announcement') or result.get('data')
             
             if responses:
                 # Show all available fields
@@ -575,8 +574,8 @@ def sidebar_changelog(responses, option):
         platform_module = PlatformModule(api_client)
         result = platform_module.get_sidebar_changelog()
         
-        if result and 'data' in result:
-            changelog = result['data']
+        if result and ('changelog' in result or 'data' in result):
+            changelog = result.get('changelog') or result.get('data')
             
             if responses:
                 # Show all available fields
