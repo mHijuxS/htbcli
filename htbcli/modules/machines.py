@@ -524,24 +524,50 @@ def activity(machine_identifier, debug, json_output):
             return
         
         result = machines_module.get_machine_activity(machine_id)
-        
-        if result and 'data' in result:
+
+        if debug:
+            if json_output:
+                import json
+                console.print(json.dumps(result, indent=2, default=str))
+            else:
+                console.print(result)
+            return
+
+        activity_data = None
+        if result and 'info' in result:
+            activity_data = result['info'].get('activity', [])
+        elif result and 'data' in result:
             activity_data = result['data']
-            
-            table = Table(title=f"Machine Activity (ID: {machine_id})")
+
+        if activity_data:
+            server = result.get('info', {}).get('server', 'Unknown')
+            table = Table(title=f"Machine Activity (ID: {machine_id}) - {server}")
             table.add_column("User", style="cyan")
             table.add_column("Type", style="green")
+            table.add_column("Blood", style="red")
             table.add_column("Date", style="yellow")
-            table.add_column("Points", style="magenta")
-            
-            for activity in activity_data:
+
+            for entry in activity_data:
+                own_type = entry.get('type', 'N/A') or 'N/A'
+                blood_type = entry.get('blood_type', '') or ''
+
+                # Color the type based on user/root
+                if own_type == 'root' or blood_type == 'root':
+                    type_str = f"[red]{own_type}[/red]"
+                elif own_type == 'user' or blood_type == 'user':
+                    type_str = f"[green]{own_type}[/green]"
+                else:
+                    type_str = own_type
+
+                blood_str = f"🩸 {blood_type}" if blood_type else ""
+
                 table.add_row(
-                    str(activity.get('user', 'N/A') or 'N/A'),
-                    str(activity.get('type', 'N/A') or 'N/A'),
-                    str(activity.get('date', 'N/A') or 'N/A'),
-                    str(activity.get('points', 'N/A') or 'N/A')
+                    str(entry.get('user_name', 'N/A') or 'N/A'),
+                    type_str,
+                    blood_str,
+                    str(entry.get('date_diff', entry.get('date', 'N/A')) or 'N/A')
                 )
-            
+
             console.print(table)
         else:
             console.print("[yellow]No activity found[/yellow]")
@@ -1339,26 +1365,139 @@ def owns_top(machine_identifier, debug, json_output):
         
         if result and 'info' in result:
             owners_data = result['info']
-            
-            table = Table(title=f"Top Owners for Machine (ID: {machine_id})")
-            table.add_column("Position", style="cyan")
-            table.add_column("Name", style="green")
-            table.add_column("Rank", style="yellow")
-            table.add_column("User Own Time", style="magenta")
-            table.add_column("Root Own Time", style="blue")
-            
+
+            table = Table(title=f"Top Owners for Machine (ID: {machine_id})", show_lines=False)
+            table.add_column("#", style="cyan", no_wrap=True)
+            table.add_column("Name", style="green", no_wrap=True)
+            table.add_column("Rank", style="yellow", no_wrap=True)
+            table.add_column("User Own", style="magenta", no_wrap=True)
+            table.add_column("Root Own", style="blue", no_wrap=True)
+            table.add_column("Notes", style="red", no_wrap=True)
+
             for owner in owners_data:
+                notes = []
+                if owner.get('is_user_blood'):
+                    notes.append("🩸 USR")
+                if owner.get('is_root_blood'):
+                    notes.append("🩸 ROOT")
+
+                root_date = owner.get('own_date', '')
+                user_date = owner.get('user_own_date', '')
+                if root_date and user_date and root_date < user_date:
+                    notes.append("⚠ ROOT<USER")
+                elif root_date and user_date and root_date == user_date:
+                    notes.append("⚠ SAME")
+
+                # Show time only (HH:MM:SS) with the own_time in parentheses
+                def fmt_own(date_str, time_str):
+                    if not date_str:
+                        return 'N/A'
+                    time_part = date_str.split('T')[1].replace('.000000Z', '') if 'T' in date_str else date_str
+                    return f"{time_part} ({time_str})" if time_str else time_part
+
+                user_time = owner.get('user_own_time', '') or ''
+                root_time = owner.get('root_own_time', '') or ''
+
                 table.add_row(
                     str(owner.get('position', 'N/A') or 'N/A'),
                     str(owner.get('name', 'N/A') or 'N/A'),
                     str(owner.get('rank_text', 'N/A') or 'N/A'),
-                    str(owner.get('user_own_time', 'N/A') or 'N/A'),
-                    str(owner.get('root_own_time', 'N/A') or 'N/A')
+                    fmt_own(user_date, user_time),
+                    fmt_own(root_date, root_time),
+                    " ".join(notes) if notes else ""
                 )
-            
+
             console.print(table)
         else:
             console.print("[yellow]No owners data found[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+@machines.command(name='owns-timeline')
+@click.option('--debug', is_flag=True, help='Show raw API response for debugging')
+@click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+@click.argument('machine_identifier')
+def owns_timeline(machine_identifier, debug, json_output):
+    """Show machine owners ranked by who completed both user+root first"""
+    try:
+        api_client = HTBAPIClient()
+        machines_module = MachinesModule(api_client)
+
+        machine_id = machines_module.resolve_machine_id(machine_identifier)
+        if machine_id is None:
+            console.print(f"[red]Could not resolve machine identifier: {machine_identifier}[/red]")
+            return
+
+        result = machines_module.get_machine_owns_top(machine_id)
+
+        if debug:
+            if json_output:
+                import json
+                console.print(json.dumps(result, indent=2, default=str))
+            else:
+                console.print(result)
+            return
+
+        if not result or 'info' not in result:
+            console.print("[yellow]No owners data found[/yellow]")
+            return
+
+        owners_data = result['info']
+
+        # Build list with completion time = max(user_own_date, root_own_date)
+        completed = []
+        for owner in owners_data:
+            root_date = owner.get('own_date', '')
+            user_date = owner.get('user_own_date', '')
+            if not root_date or not user_date:
+                continue
+            completion_time = max(root_date, user_date)
+            completed.append({
+                **owner,
+                'completion_time': completion_time,
+                'root_first': root_date < user_date,
+                'same_time': root_date == user_date,
+            })
+
+        # Sort by completion time (first to finish both flags = #1)
+        completed.sort(key=lambda x: x['completion_time'])
+
+        table = Table(title=f"Owns Timeline for Machine (ID: {machine_id})")
+        table.add_column("#", style="cyan", no_wrap=True)
+        table.add_column("Name", style="green", no_wrap=True)
+        table.add_column("Rank", style="yellow", no_wrap=True)
+        table.add_column("User Own", style="magenta", no_wrap=True)
+        table.add_column("Root Own", style="blue", no_wrap=True)
+        table.add_column("Completed", style="white bold", no_wrap=True)
+        table.add_column("Notes", style="red", no_wrap=True)
+
+        def fmt_time(date_str):
+            if not date_str or 'T' not in date_str:
+                return 'N/A'
+            return date_str.split('T')[1].replace('.000000Z', '')
+
+        for i, owner in enumerate(completed, 1):
+            notes = []
+            if owner.get('is_user_blood'):
+                notes.append("🩸 USR")
+            if owner.get('is_root_blood'):
+                notes.append("🩸 ROOT")
+            if owner['root_first']:
+                notes.append("⚠ ROOT<USER")
+            elif owner['same_time']:
+                notes.append("⚠ SAME")
+
+            table.add_row(
+                str(i),
+                str(owner.get('name', 'N/A') or 'N/A'),
+                str(owner.get('rank_text', 'N/A') or 'N/A'),
+                fmt_time(owner.get('user_own_date', '')),
+                fmt_time(owner.get('own_date', '')),
+                fmt_time(owner['completion_time']),
+                " ".join(notes) if notes else ""
+            )
+
+        console.print(table)
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
