@@ -243,14 +243,30 @@ def download_tcp(vpn_id, debug, json_output):
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
 
-@click.argument('vpn_id', type=int)
-def switch(vpn_id, debug, json_output):
-    """Switch VPN server"""
+@click.argument('vpn_identifier')
+def switch(vpn_identifier, debug, json_output):
+    """Switch VPN server by ID or name"""
     try:
         api_client = HTBAPIClient()
         connection_module = ConnectionModule(api_client)
+
+        # Try to parse as integer ID first
+        try:
+            vpn_id = int(vpn_identifier)
+        except ValueError:
+            # Not an integer, treat as server name
+            from .vpn import VPNModule
+            vpn_module = VPNModule(api_client)
+            vpn_id = vpn_module.find_server_id_by_name(vpn_identifier)
+            if not vpn_id:
+                console.print(f"[red]Could not find server with name: {vpn_identifier}[/red]")
+                console.print("[yellow]Use 'htbcli vpn --list' to see available server names and IDs[/yellow]")
+                return
+
+            console.print(f"[blue]Resolved '{vpn_identifier}' to server ID: {vpn_id}[/blue]")
+
         result = connection_module.switch_vpn_server(vpn_id)
-        
+
         if result:
             console.print(Panel.fit(
                 f"[bold green]VPN Server Switch Result[/bold green]\n"

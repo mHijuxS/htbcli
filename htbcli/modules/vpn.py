@@ -6,6 +6,7 @@ import os
 import subprocess
 import click
 import glob
+import time
 from typing import Dict, Any, Optional, List, Union
 from rich.console import Console
 from rich.table import Table
@@ -443,7 +444,7 @@ class VPNModule:
                 ], capture_output=True, text=True, timeout=30)
                 
                 if process.returncode == 0:
-                    console.print(f"[green]✓[/green] VPN connection started successfully with sudo")
+                    console.print(f"[green]✓[/green] VPN daemon started with sudo")
                     success = True
                 else:
                     console.print(f"[red]sudo failed: {process.stderr}[/red]")
@@ -451,7 +452,7 @@ class VPNModule:
                 console.print("[red]sudo command timed out - password prompt may have failed[/red]")
             except Exception as e:
                 console.print(f"[red]sudo error: {e}[/red]")
-            
+
             # Method 2: Try without sudo (if user has permissions)
             if not success:
                 try:
@@ -461,15 +462,15 @@ class VPNModule:
                         '--config', vpn_file,
                         '--daemon'
                     ], capture_output=True, text=True, timeout=10)
-                    
+
                     if process.returncode == 0:
-                        console.print(f"[green]✓[/green] VPN connection started successfully without sudo")
+                        console.print(f"[green]✓[/green] VPN daemon started without sudo")
                         success = True
                     else:
                         console.print(f"[yellow]Non-sudo failed: {process.stderr}[/yellow]")
                 except Exception as e:
                     console.print(f"[red]Non-sudo error: {e}[/red]")
-            
+
             if not success:
                 console.print("[red]✗[/red] Failed to start VPN connection")
                 console.print("[yellow]Troubleshooting tips:[/yellow]")
@@ -477,8 +478,34 @@ class VPNModule:
                 console.print("2. Try running manually: sudo openvpn --config <vpn_file>")
                 console.print("3. Check if you have sudo privileges")
                 return False
-            
-            return True
+
+            # Verify tun interface comes up
+            console.print("[blue]Waiting for tun interface...[/blue]")
+            for i in range(10):
+                time.sleep(1)
+                result = subprocess.run(['ip', 'link', 'show', 'type', 'tun'], capture_output=True, text=True)
+                if result.returncode == 0 and result.stdout.strip():
+                    # Extract interface name and IP
+                    iface_check = subprocess.run(['ip', '-4', 'addr', 'show', 'dev', 'tun0'], capture_output=True, text=True)
+                    if iface_check.returncode == 0 and 'inet' in iface_check.stdout:
+                        import re
+                        ip_match = re.search(r'inet (\S+)', iface_check.stdout)
+                        ip_addr = ip_match.group(1) if ip_match else "unknown"
+                        console.print(f"[green]✓[/green] VPN connected — tun0: {ip_addr}")
+                        return True
+                    console.print(f"[green]✓[/green] VPN interface detected, waiting for IP...")
+                    continue
+
+            # Check if openvpn process is still running
+            pgrep = subprocess.run(['pgrep', 'openvpn'], capture_output=True, text=True)
+            if pgrep.returncode != 0:
+                console.print("[red]✗[/red] OpenVPN process died — check logs: sudo journalctl -u openvpn --no-pager -n 20")
+                console.print("[yellow]The .ovpn file may be stale. Try: htbcli vpn -d[/yellow]")
+                return False
+            else:
+                console.print("[yellow]⚠[/yellow] OpenVPN running but no tun interface after 10s")
+                console.print("[yellow]Check logs: sudo journalctl -xe | grep openvpn[/yellow]")
+                return False
                 
         except Exception as e:
             console.print(f"[red]Error starting VPN: {e}[/red]")
@@ -544,12 +571,11 @@ class VPNModule:
 @click.option('--stop', is_flag=True, help='Stop a VPN')
 @click.option('--list', is_flag=True, help='List VPNs')
 @click.option('--files', is_flag=True, help='List downloaded VPN files')
-@click.option('--switch', is_flag=True, help='Switch VPN server')
+@click.option('--switch', type=int, default=None, help='Switch VPN server by ID (e.g., --switch 267)')
 @click.option('--product', '-p', type=click.Choice(['labs', 'starting_point', 'fortresses', 'competitive']), default=None, help='Filter list by product (default: show all)')
 @click.option('--mode', '-m', type=click.Choice(['labs', 'sp', 'fortresses', 'prolabs', 'endgames', 'competitive']), help='Mode')
 @click.option('--name', '-n', help='VPN name to start (e.g., "EU VIP 7")')
-@click.option('--server-id', type=int, help='Server ID to switch to (use with --switch)')
-def vpn(download, start, stop, list, files, switch, product, mode, name, server_id):
+def vpn(download, start, stop, list, files, switch, product, mode, name):
     """Interact with HackTheBox VPNs"""
     try:
         api_client = HTBAPIClient()
@@ -586,25 +612,20 @@ def vpn(download, start, stop, list, files, switch, product, mode, name, server_
             return
         
         # Handle switch command
-        if switch:
-            if not server_id:
-                console.print("[red]Server ID is required when using --switch[/red]")
-                console.print("[yellow]Use --list to see available server IDs[/yellow]")
-                return
-            
-            console.print(f"[blue]Switching to server ID: {server_id}[/blue]")
-            result = vpn_module.switch_vpn_server(server_id)
-            
+        if switch is not None:
+            console.print(f"[blue]Switching to server ID: {switch}[/blue]")
+            result = vpn_module.switch_vpn_server(switch)
+
             if result and result.get('status'):
-                console.print(f"[green]✓[/green] Successfully switched to server ID {server_id}")
+                console.print(f"[green]✓[/green] Successfully switched to server ID {switch}")
             else:
-                console.print(f"[red]✗[/red] Failed to switch to server ID {server_id}")
+                console.print(f"[red]✗[/red] Failed to switch to server ID {switch}")
             return
         
         # Handle download command
         if download:
             console.print("[bold blue]Downloading VPN for currently selected server...[/bold blue]")
-            vpn_module.download_current_vpn()
+            vpn_module.download_current_vpn(product=product or "lab")
             return
         
         # Handle start and stop commands
