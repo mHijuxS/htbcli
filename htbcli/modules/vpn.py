@@ -481,19 +481,24 @@ class VPNModule:
 
             # Verify tun interface comes up
             console.print("[blue]Waiting for tun interface...[/blue]")
+            import re
             for i in range(10):
                 time.sleep(1)
                 result = subprocess.run(['ip', 'link', 'show', 'type', 'tun'], capture_output=True, text=True)
                 if result.returncode == 0 and result.stdout.strip():
-                    # Extract interface name and IP
-                    iface_check = subprocess.run(['ip', '-4', 'addr', 'show', 'dev', 'tun0'], capture_output=True, text=True)
-                    if iface_check.returncode == 0 and 'inet' in iface_check.stdout:
-                        import re
-                        ip_match = re.search(r'inet (\S+)', iface_check.stdout)
-                        ip_addr = ip_match.group(1) if ip_match else "unknown"
-                        console.print(f"[green]✓[/green] VPN connected — tun0: {ip_addr}")
-                        return True
-                    console.print(f"[green]✓[/green] VPN interface detected, waiting for IP...")
+                    # Extract actual interface name(s) from `ip link show` output
+                    # Lines look like: "3: tun0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> ..."
+                    iface_names = re.findall(r'^\d+:\s+([^:@\s]+)', result.stdout, re.MULTILINE)
+                    if not iface_names:
+                        continue
+                    for iface in iface_names:
+                        iface_check = subprocess.run(['ip', '-4', 'addr', 'show', 'dev', iface], capture_output=True, text=True)
+                        if iface_check.returncode == 0 and 'inet' in iface_check.stdout:
+                            ip_match = re.search(r'inet (\S+)', iface_check.stdout)
+                            ip_addr = ip_match.group(1) if ip_match else "unknown"
+                            console.print(f"[green]✓[/green] VPN connected — {iface}: {ip_addr}")
+                            return True
+                    console.print(f"[green]✓[/green] VPN interface detected ({', '.join(iface_names)}), waiting for IP...")
                     continue
 
             # Check if openvpn process is still running

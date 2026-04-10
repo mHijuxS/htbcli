@@ -365,12 +365,17 @@ def extend(machine_identifier):
 
 @vm.command()
 @click.argument('machine_identifier', required=False)
-def reset(machine_identifier):
+@click.option('--no-wait', is_flag=True, help='Do not wait for VM to be ready after reset (reset and exit immediately)')
+@click.option('--max-wait', default=300, help='Maximum wait time in seconds (default: 300)')
+def reset(machine_identifier, no_wait, max_wait):
     """Reset the virtual machine (accepts machine ID or name, defaults to active machine)"""
     try:
         api_client = HTBAPIClient()
         vm_module = VMModule(api_client)
-        
+
+        machine_id = None
+        machine_name = None
+
         # If no machine identifier provided, get the active machine
         if machine_identifier is None:
             vm_status = vm_module.machines_module.get_vm_status()
@@ -389,13 +394,17 @@ def reset(machine_identifier):
                 console.print("[red]Error: No active machine found and no machine specified[/red]")
                 return
         else:
-            # Machine identifier provided, use the existing logic
-            result = vm_module.reset_vm(machine_identifier)
-        
+            # Resolve the machine ID so we can reuse it for the wait loop
+            machine_id = vm_module.resolve_machine_id(machine_identifier)
+            if machine_id is None:
+                console.print(f"[red]Error: Could not resolve machine identifier: {machine_identifier}[/red]")
+                return
+            result = vm_module.reset_vm(machine_id)
+
         if result and 'error' in result:
             console.print(f"[red]Error: {result['error']}[/red]")
             return
-        
+
         if result and 'message' in result:
             machine_display = machine_name if machine_identifier is None else machine_identifier
             console.print(Panel.fit(
@@ -406,6 +415,26 @@ def reset(machine_identifier):
             ))
         else:
             console.print("[yellow]No response from VM reset[/yellow]")
+
+        # Wait for VM to be ready by default, unless --no-wait flag is provided
+        if not no_wait and machine_id is not None:
+            console.print("\n[blue]Waiting for VM to be ready after reset...[/blue]")
+            wait_result = vm_module.wait_for_vm_ready(machine_id, max_wait)
+
+            if wait_result.get('success'):
+                console.print(Panel.fit(
+                    f"[bold green]VM Ready![/bold green]\n"
+                    f"IP Address: {wait_result['ip']} (copied to clipboard)\n"
+                    f"Machine: {wait_result['machine_name']}\n"
+                    f"Expires at: {wait_result['expires_at']}\n"
+                    f"Wait time: {wait_result['wait_time']:.1f}s\n"
+                    f"Attempts: {wait_result['attempts']}",
+                    title="VM Ready"
+                ))
+            else:
+                console.print(f"[red]Error waiting for VM: {wait_result.get('error', 'Unknown error')}[/red]")
+        elif no_wait:
+            console.print("\n[yellow]Skipping wait - use 'vm wait <machine>' to check status later[/yellow]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
