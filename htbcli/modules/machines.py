@@ -252,6 +252,10 @@ class MachinesModule:
         """Get machines tasks"""
         return self.api.get(f"/machines/{machine_id}/tasks")
 
+    def submit_machine_task_flag(self, machine_id: int, task_id: int, flag: str) -> Dict[str, Any]:
+        """Submit an answer to a guided-mode task question."""
+        return self.api.post(f"/machines/{machine_id}/tasks/{task_id}/flag", json_data={"flag": flag})
+
     def resolve_machine_name_and_id(self, machine_identifier: Union[int, str]) -> Optional[Dict[str, Any]]:
         """Resolve machine identifier to both ID and name/slug by fetching profile data.
         Returns dict with 'id', 'name', 'isGuidedEnabled', and full 'info' from profile."""
@@ -2172,7 +2176,8 @@ def guided(machine_identifier, debug, json_output, show_hints):
                     Text.from_markup(f"  {completed_count}/{total_count} tasks  {status_label}"),
                 ),
                 Text(""),
-                Text.from_markup(f"[dim]htbcli machines submit-task {machine_identifier} <flag>[/dim]"),
+                Text.from_markup(f"[dim]user/root flag: htbcli machines submit-task {machine_identifier} <flag>[/dim]"),
+                Text.from_markup(f"[dim]task answer:   htbcli machines submit-task {machine_identifier} --task <id> <answer>[/dim]"),
             )
 
             console.print(Panel(
@@ -2347,10 +2352,13 @@ def guided(machine_identifier, debug, json_output, show_hints):
 @machines.command(name='submit-task')
 @click.option('--debug', is_flag=True, help='Show raw API response for debugging')
 @click.option('--json', 'json_output', is_flag=True, help='Output debug info as JSON for jq parsing')
+@click.option('--task', 'task_id', type=int, default=None,
+              help='Task ID for guided-mode question answers (from `machines tasks` ID column). '
+                   'Omit to submit a user/root flag via the standard /own endpoint.')
 @click.argument('machine_identifier', required=False)
 @click.argument('flag', required=False)
-def submit_task(machine_identifier, flag, debug, json_output):
-    """Submit flag for a guided mode task. Uses active machine if no machine specified. Flag can be piped from stdin."""
+def submit_task(machine_identifier, flag, debug, json_output, task_id):
+    """Submit answer/flag for a guided-mode task. Uses active machine if none specified. Flag can be piped from stdin."""
     try:
         api_client = HTBAPIClient()
         machines_module = MachinesModule(api_client)
@@ -2390,8 +2398,11 @@ def submit_task(machine_identifier, flag, debug, json_output):
         if tasks_before and 'data' in tasks_before:
             pending_before = {t['id'] for t in tasks_before['data'] if not t.get('completed') and t.get('id')}
 
-        # Submit flag using the standard machine own endpoint
-        result = machines_module.submit_machine_flag(flag, machine_id)
+        # Submit via per-task endpoint if --task was given, otherwise fall back to /own
+        if task_id is not None:
+            result = machines_module.submit_machine_task_flag(machine_id, task_id, flag)
+        else:
+            result = machines_module.submit_machine_flag(flag, machine_id)
 
         if handle_debug_option(debug, result, f"Debug: Task Flag Submission (Machine ID: {machine_id})", json_output):
             return
