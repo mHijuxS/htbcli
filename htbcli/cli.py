@@ -139,13 +139,17 @@ def module_info(module_name):
 def setup():
     """Setup HTB CLI configuration"""
     try:
-        Config.ensure_config_dir()
+        config_dir = Config.ensure_config_dir()
+        env_path = config_dir / ".env"
         console.print(Panel.fit(
             "[bold green]HTB CLI Setup[/bold green]\n"
             "1. Get your API token from https://app.hackthebox.com\n"
-            "2. Set the environment variable: export HTB_TOKEN='your_token_here'\n"
-            "3. Or create a .env file with: HTB_TOKEN=your_token_here\n"
-            "4. Run 'htbcli info' to verify your configuration",
+            "2. Set the environment variable:\n"
+            "   [cyan]export HTB_TOKEN='your_token_here'[/cyan]\n"
+            f"3. Or create an .env file at [cyan]{env_path}[/cyan] with:\n"
+            "   [cyan]HTB_TOKEN=your_token_here[/cyan]\n"
+            "   (a ./.env in the current directory also works)\n"
+            "4. Run [cyan]htbcli info[/cyan] to verify your configuration",
             title="Setup Instructions"
         ))
     except Exception as e:

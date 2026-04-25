@@ -1,654 +1,533 @@
 # HTB CLI
 
-A comprehensive command-line interface for the HackTheBox API, providing easy access to all HTB endpoints organized by modules.
+A comprehensive command-line interface for the HackTheBox API (v4 and v5),
+providing easy access to machines, challenges, sherlocks, fortresses, prolabs,
+seasons, VPN configs, VM operations, and more — all organized into modules.
 
 ## Features
 
-- **Modular Design**: Organized by API categories (Machines, Challenges, Users, Seasons, Sherlocks, etc.)
-- **Rich Output**: Beautiful tables and panels using Rich library
-- **Easy Setup**: Simple configuration with environment variables
-- **Comprehensive Coverage**: Supports all major HTB API endpoints
-- **Interactive**: User-friendly command-line interface
-- **Auto-completion**: Full shell completion support for bash and zsh (similar to Netexec)
+- **Modular Design**: Organized by API categories (Machines, Challenges, Users, Seasons, Sherlocks, Fortresses, ProLabs, VM, VPN, etc.)
+- **Rich Output**: Tables and panels rendered with the Rich library
+- **Flexible Filtering**: Powerful list/sort/filter options for machines, challenges and sherlocks
+- **Flag Submission**: Supports flag arguments, stdin piping and active-machine auto-detection
+- **VPN Management**: List, switch, download and start/stop OpenVPN configs from the CLI
+- **VM Lifecycle**: Spawn, wait, reset, terminate, vote-reset and accept-reset for HTB VMs
+- **Debug Mode**: `--debug` and `--json` flags expose the raw API response (useful with `jq`)
+- **Field Selection**: `--responses` lists every field returned by an endpoint, `-o/--option` selects specific ones
+- **Suspicious Activity Analysis**: Heuristic profile auditing (`htbcli suspicious`)
+- **Shell Completion**: Bash and zsh completion scripts
 
 ## Installation
 
 ### Prerequisites
 
-- Python 3.8 or higher
-- HTB API token (get it from https://app.hackthebox.com)
+- Python 3.8.1 or higher
+- An HTB API token (App Token) from https://app.hackthebox.com/profile/settings
 
-### Install from source
+### Install with uv (recommended)
 
 ```bash
 # Clone the repository
 git clone <repository-url>
 cd htbcli
 
-# Install using uv (recommended)
+# Install as a uv tool (puts `htbcli` on your PATH)
 uv tool install .
 
-# Or run directly without installation
+# Or run directly from the repo without installing
 uv run htbcli --help
 ```
 
-## Configuration
-
-### 1. Get your API Token
-
-1. Go to https://app.hackthebox.com
-2. Navigate to your profile settings
-3. Generate an API token
-
-### 2. Set the API Token
-
-**Option 1: Environment Variable**
-```bash
-export HTB_TOKEN="your_token_here"
-```
-
-**Option 2: .env file**
-Create a `.env` file in the project root:
-```
-HTB_TOKEN=your_token_here
-```
-
-### 3. Verify Configuration
+### Install with pip
 
 ```bash
-htbcli info
+pip install .
 ```
 
-## Auto-completion Setup
+## Authentication
 
-HTB CLI includes comprehensive auto-completion support for bash and zsh, similar to Netexec. This provides intelligent command and option suggestions as you type.
+HTB CLI authenticates using a single environment variable: `HTB_TOKEN`. It is
+resolved from the first source that provides a value, in this order:
 
-### Quick Setup
+1. The shell environment (`export HTB_TOKEN=...`)
+2. `./.env` in the current working directory
+3. `~/.htbcli/.env` (works anywhere, including when `htbcli` is installed globally)
+4. The path in `HTBCLI_ENV_FILE` if that variable is set (explicit override)
+
+### Recommended: put your token in `~/.htbcli/.env`
+
+This works whether you launch `htbcli` from the repo, from `~`, from `/tmp`, or
+from anywhere else — nothing has to be on `PATH` except `htbcli`.
 
 ```bash
-# Run the auto-completion installer
-./install_completion.sh
-
-# Or manually generate and source completion
-source <(htbcli completion --shell bash --raw)  # For bash
-source <(htbcli completion --shell zsh --raw)   # For zsh
+uv run htbcli setup      # creates ~/.htbcli and prints the .env path
+mkdir -p ~/.htbcli
+echo 'HTB_TOKEN=your_app_token_here' > ~/.htbcli/.env
+chmod 600 ~/.htbcli/.env
 ```
 
-### Manual Setup
-
-1. **Generate completion script:**
-   ```bash
-   htbcli completion --shell bash  # For bash (shows formatted output)
-   htbcli completion --shell zsh   # For zsh (shows formatted output)
-   htbcli completion --shell bash --raw  # For bash (raw output for sourcing)
-   htbcli completion --shell zsh --raw   # For zsh (raw output for sourcing)
-   ```
-
-2. **Add to your shell config:**
-   - For bash: Add the output to `~/.bashrc`
-   - For zsh: Add the output to `~/.zshrc`
-
-3. **Reload your shell:**
-   ```bash
-   source ~/.bashrc  # For bash
-   source ~/.zshrc   # For zsh
-   ```
-
-### Usage Examples
-
-Once installed, you can use TAB completion:
+### Alternative: shell environment variable
 
 ```bash
-# Complete main commands
-htbcli [TAB]                    # Shows: machines, challenges, user, season, etc.
-
-# Complete subcommands
-htbcli machines [TAB]           # Shows: list, active, info, submit, etc.
-htbcli challenges [TAB]         # Shows: list-challenges, info, submit, etc.
-
-# Complete options
-htbcli machines list --[TAB]    # Shows: --help, --debug, --json, etc.
-htbcli machines list --difficulty [TAB]  # Shows: very-easy, easy, medium, hard, insane
-
-# Complete choice options
-htbcli machines list --os [TAB] # Shows: linux, windows, freebsd, openbsd, other
+export HTB_TOKEN="your_app_token_here"
+# add to ~/.bashrc / ~/.zshrc to make it persistent
 ```
 
-### Features
+A shell-level `HTB_TOKEN` always wins over any `.env` file, so you can use a
+shell variable to temporarily override an `.env`-based default.
 
-- **Command completion**: All main commands and subcommands
-- **Option completion**: All available flags and options
-- **Choice completion**: Predefined choices for options like difficulty, OS, etc.
-- **Context-aware**: Suggestions change based on current command context
-- **Descriptive**: Zsh completion includes descriptions for commands
+### Verify your configuration
+
+```bash
+uv run htbcli info
+```
+
+You should see `API Token: Set`. If it shows `Not Set`, none of the sources
+above supplied a token.
 
 ## Usage
 
-### Basic Commands
+### Top-level commands
 
 ```bash
-# Show help
-htbcli --help
-# or
-uv run htbcli --help
-
-# Show version
-htbcli --version
-# or
-uv run htbcli --version
-
-# Show configuration info
-htbcli info
-# or
-uv run htbcli info
-
-# Setup instructions
-htbcli setup
-# or
-uv run htbcli setup
-
-# List all available endpoints
-htbcli endpoints
-# or
-uv run htbcli endpoints
-
-# Show module information
-htbcli module-info Machines
-# or
-uv run htbcli module-info Machines
+uv run htbcli --help        # show all commands
+uv run htbcli --version     # show version
+uv run htbcli info          # show config + token status
+uv run htbcli setup         # print setup instructions
+uv run htbcli endpoints     # list API modules from the bundled OpenAPI spec
+uv run htbcli module-info Machines   # detailed endpoints for a module
+uv run htbcli completion --shell zsh # generate shell completion script
 ```
 
-### Machines Module
+### Available command groups
 
-```bash
-# Get currently active machine
-htbcli machines active
-# or
-uv run htbcli machines active
+| Group | Description |
+|---|---|
+| `machines` | Machine list/profile/info/search, VM tasks, walkthroughs, flag submission |
+| `challenges` | Challenge list/info/download, start/stop, todo list, flag submission |
+| `sherlocks` | Sherlock list/info/download, play/progress/tasks, flag submission |
+| `fortresses` | Fortress list/info, flags, vote reset, flag submission |
+| `prolabs` | ProLab list/info, machines, flags, reviews, subscription |
+| `starting-point` | Starting Point list/info, activity, writeups |
+| `tracks` | Track list/info, items, writeup |
+| `season` | Season list, machines, leaderboard, rewards, user rank |
+| `user` | User profile/info/activity/bloods/badges/dashboard, follow/respect, etc. |
+| `team` | Team list/info, activity, recommended, writeups |
+| `universities` | University list, profile, members, rankings, stats |
+| `ranking` | Generic ranking list/info, recommended, writeups |
+| `badges` | Badge list |
+| `career` | Careers list/info, activity, recommended, writeups |
+| `home` | Home page banners, recommended content, user progress/todo |
+| `platform` | Platform announcements, changelogs, navigation, lab list, search |
+| `pwnbox` | PwnBox start/status/usage/terminate |
+| `vm` | Spawn / wait / extend / reset / terminate / vote-reset / accept-vote / vpn-servers |
+| `vpn` | List / switch / download / start / stop OpenVPN configs |
+| `connection` | Current connections, server lists, switch, download UDP/TCP, prolab status |
+| `review` | Mark a review helpful / unhelpful |
+| `suspicious` | Profile-audit heuristics (analyze, score, speed, bursts, challenges) |
 
-# List machines (paginated)
-htbcli machines list --page 1 --per-page 20 --status active
-# or
-uv run htbcli machines list --page 1 --per-page 20 --status active
+Discover everything with `uv run htbcli <group> --help`.
 
-# Get machine profile by slug
-htbcli machines profile machine-name
-# or
-uv run htbcli machines profile machine-name
+### Common conventions
 
-# Submit flag for machine (using active machine, machine ID, name, or stdin)
-echo "flag{your_flag_here}" | htbcli machines submit
-htbcli machines submit "flag{your_flag_here}"
-htbcli machines submit 12345 "flag{your_flag_here}"
-htbcli machines submit "machine-name" "flag{your_flag_here}"
-echo "flag{your_flag_here}" | htbcli machines submit "machine-name"
-```
+Many list/profile commands accept these shared options:
 
-### Challenges Module
+- `--debug` — print the raw API response as a Rich panel
+- `--json` — print the raw API response as JSON (great for piping into `jq`)
+- `--responses` — print every field name returned by the endpoint
+- `-o/--option <field>` — select specific fields (repeatable)
 
-```bash
-# List challenges
-htbcli challenges list --page 1 --per-page 20 --difficulty Easy
-# or
-uv run htbcli challenges list --page 1 --per-page 20 --difficulty Easy
-
-# Get challenge profile
-htbcli challenges profile challenge-name
-# or
-uv run htbcli challenges profile challenge-name
-
-# Submit challenge flag
-htbcli challenges submit "flag{your_flag_here}"
-# or
-uv run htbcli challenges submit "flag{your_flag_here}"
-```
-
-### User Module
-
-```bash
-# Get user profile
-htbcli user profile 12345
-# or
-uv run htbcli user profile 12345
-
-# Get user owns
-htbcli user owns 12345
-# or
-uv run htbcli user owns 12345
-
-# Get user activity
-htbcli user activity 12345
-# or
-uv run htbcli user activity 12345
-
-# Get user rankings
-htbcli user rankings 12345
-# or
-uv run htbcli user rankings 12345
-```
-
-### Season Module
-
-```bash
-# List all seasons
-htbcli season list
-# or
-uv run htbcli season list
-
-# Get season machines
-htbcli season machines
-# or
-uv run htbcli season machines
-
-# Get completed season machines
-htbcli season completed 1
-# or
-uv run htbcli season completed 1
-
-# Submit seasonal flag
-htbcli season submit "flag{your_flag_here}"
-# or
-uv run htbcli season submit "flag{your_flag_here}"
-
-# Get arena stats
-htbcli season stats
-# or
-uv run htbcli season stats
-```
-
-### Sherlocks Module
-
-```bash
-# List sherlocks
-htbcli sherlocks list-sherlocks --page 1 --per-page 20
-# or
-uv run htbcli sherlocks list-sherlocks --page 1 --per-page 20
-
-# List sherlocks with filtering
-htbcli sherlocks list-sherlocks --difficulty easy --state active --sort-by rating
-# or
-uv run htbcli sherlocks list-sherlocks --difficulty easy --state active --sort-by rating
-
-# Get sherlock categories
-htbcli sherlocks categories
-# or
-uv run htbcli sherlocks categories
-
-# Get sherlock info by ID or name
-htbcli sherlocks info 123
-htbcli sherlocks info "brutus"
-# or
-uv run htbcli sherlocks info 123
-uv run htbcli sherlocks info "brutus"
-
-# Download sherlock file (default behavior)
-htbcli sherlocks download 123
-htbcli sherlocks download "brutus"
-# or
-uv run htbcli sherlocks download 123
-uv run htbcli sherlocks download "brutus"
-
-# Show download link only
-htbcli sherlocks download 123 --link-only
-htbcli sherlocks download "brutus" --link-only
-# or
-uv run htbcli sherlocks download 123 --link-only
-uv run htbcli sherlocks download "brutus" --link-only
-
-# Download sherlock file with custom filename
-htbcli sherlocks download 123 --output my_sherlock.zip
-htbcli sherlocks download "brutus" --output brutus.zip
-# or
-uv run htbcli sherlocks download 123 --output my_sherlock.zip
-uv run htbcli sherlocks download "brutus" --output brutus.zip
-
-# Start playing a sherlock
-htbcli sherlocks play 123
-htbcli sherlocks play "brutus"
-# or
-uv run htbcli sherlocks play 123
-uv run htbcli sherlocks play "brutus"
-
-# Get sherlock progress
-htbcli sherlocks progress 123
-htbcli sherlocks progress "brutus"
-# or
-uv run htbcli sherlocks progress 123
-uv run htbcli sherlocks progress "brutus"
-
-# Get sherlock tasks
-htbcli sherlocks tasks 123
-htbcli sherlocks tasks "brutus"
-# or
-uv run htbcli sherlocks tasks 123
-uv run htbcli sherlocks tasks "brutus"
-
-# Submit flag for a specific sherlock task
-htbcli sherlocks submit-flag 123 456 "flag{your_flag_here}"
-htbcli sherlocks submit-flag "brutus" 456 "flag{your_flag_here}"
-# or
-uv run htbcli sherlocks submit-flag 123 456 "flag{your_flag_here}"
-uv run htbcli sherlocks submit-flag "brutus" 456 "flag{your_flag_here}"
-
-# Get sherlock writeup
-htbcli sherlocks writeup 123
-htbcli sherlocks writeup "brutus"
-# or
-uv run htbcli sherlocks writeup 123
-uv run htbcli sherlocks writeup "brutus"
-
-# Get official sherlock writeup
-htbcli sherlocks writeup-official 123
-htbcli sherlocks writeup-official "brutus"
-# or
-uv run htbcli sherlocks writeup-official 123
-uv run htbcli sherlocks writeup-official "brutus"
-```
-
-### Advanced Filtering Examples
-
-The CLI supports powerful filtering and sorting options for listing machines and challenges:
-
-#### Machine Filtering
-
-```bash
-# Filter machines by difficulty, sort by rating (ascending), show only retired machines
-htbcli machines list-machines --difficulty easy --sort-type asc --sort-by rating --status retired --show-completed incomplete
-
-# Filter by multiple criteria
-htbcli machines list-machines --difficulty medium --os linux --status active --sort-by difficulty --sort-type desc
-
-# Show only machines you haven't completed
-htbcli machines list-machines --show-completed incomplete --status active
-
-# Filter by OS and difficulty
-htbcli machines list-machines --os windows --difficulty hard --status retired
-
-# Sort by different criteria
-htbcli machines list-machines --sort-by name --sort-type asc --status active
-htbcli machines list-machines --sort-by rating --sort-type desc --difficulty easy
-```
-
-#### Challenge Filtering
-
-```bash
-# Filter challenges by category, difficulty, and completion status
-htbcli challenges list-challenges --state active --difficulty medium --status incompleted --category web
-
-# Filter by multiple categories
-htbcli challenges list-challenges --category web --category crypto --difficulty easy
-
-# Show only challenges you haven't solved
-htbcli challenges list-challenges --status incompleted --difficulty hard
-
-# Filter by state and difficulty
-htbcli challenges list-challenges --state active --difficulty medium --sort-by rating --sort-type desc
-
-# Show challenges by specific category
-htbcli challenges list-challenges --category pwn --difficulty medium --status incompleted
-```
-
-#### Sherlock Filtering
-
-```bash
-# Filter sherlocks by difficulty and state
-htbcli sherlocks list-sherlocks --difficulty easy --state active --sort-by rating --sort-type desc
-
-# Filter by multiple difficulties
-htbcli sherlocks list-sherlocks --difficulty easy --difficulty medium --state active
-
-# Filter by category (use category IDs from categories command)
-htbcli sherlocks list-sherlocks --category 1 --category 2 --difficulty medium
-
-# Show only completed sherlocks
-htbcli sherlocks list-sherlocks --status completed --sort-by solves --sort-type desc
-
-# Search by keyword
-htbcli sherlocks list-sherlocks --keyword "web" --difficulty medium --state active
-
-# Show only todo items
-htbcli sherlocks list-sherlocks --todo --difficulty easy
-
-# Complex filtering with multiple criteria
-htbcli sherlocks list-sherlocks --difficulty medium --state active --status incompleted --sort-by rating --sort-type desc
-```
-
-#### Available Filter Options
-
-**For Machines:**
-- `--difficulty`: easy, medium, hard, insane
-- `--os`: linux, windows, openbsd, solaris, freebsd, other
-- `--status`: active, retired, all
-- `--show-completed`: completed, incomplete, all
-- `--sort-by`: name, difficulty, rating, release_date, user_rating
-- `--sort-type`: asc, desc
-
-**For Challenges:**
-- `--difficulty`: easy, medium, hard, insane
-- `--category`: web, crypto, pwn, forensics, reverse, stego, osint, mobile, hardware, misc
-- `--state`: active, retired, all
-- `--status`: completed, incompleted, all
-- `--sort-by`: name, difficulty, rating, release_date, solves
-- `--sort-type`: asc, desc
-
-**For Sherlocks:**
-- `--difficulty`: very-easy, easy, medium, hard, insane
-- `--state`: active, retired, unreleased
-- `--category`: category ID (use `htbcli sherlocks categories` to see available IDs)
-- `--status`: completed, incompleted
-- `--sort-by`: solves, category, rating, name
-- `--sort-type`: asc, desc
-- `--keyword`: search by keyword
-- `--todo`: show only todo items
-```
-
-## Available Modules
-
-The CLI is organized into the following modules based on the HTB API:
-
-- **Machines**: Machine-related endpoints (active, list, profile, submit flags)
-- **Challenges**: Challenge-related endpoints (list, profile, submit flags)
-- **User**: User profile and statistics endpoints
-- **Season**: Season/Arena-related endpoints
-- **Sherlocks**: Sherlock-related endpoints (list, categories, info, download, play, progress, tasks, submit flags, writeups)
-- **Badges**: Badge-related endpoints
-- **Career**: Career-related endpoints (companies, jobs, applications)
-- **Connection**: VPN connection endpoints (servers, status, connect/disconnect)
-- **Fortresses**: Fortress-related endpoints (list, profile, submit flags)
-- **Home**: Home page banner endpoints (banners, announcements, dashboard, news)
-- **Platform**: General platform endpoints (announcements, dashboard, notifications, stats, status, health)
-- **Prolabs**: ProLab-related endpoints (list, profile, machines, submit flags)
-- **PwnBox**: PwnBox-related endpoints (status, info, config, logs)
-- **Ranking**: Ranking endpoints (global, country, machine, challenge, user rankings)
-- **Review**: Product review endpoints (list reviews, get review details)
-- **Starting Point**: Starting Point endpoints (list, profile, submit flags)
-- **Team**: Team ranking endpoints (list teams, profiles, members, rankings, stats)
-- **Tracks**: Track-related endpoints (list, profile, progress, modules)
-- **Universities**: University ranking endpoints (list, profile, rankings, stats)
-- **VM**: VM spawning operations (spawn, extend, reset, terminate, vote reset, accept reset vote)
+Most commands that take an entity (machine, challenge, sherlock, etc.) accept
+either an ID or a slug/name.
 
 ## Examples
 
-### Get Active Machine Information
+### Machines
+
 ```bash
-htbcli machines active
-# or
+# Currently active machine + VM status
 uv run htbcli machines active
+
+# List machines with filters
+uv run htbcli machines list-machines --status active --difficulty easy --os linux
+uv run htbcli machines list-machines --status retired --show-completed incomplete --sort-by rating --sort-type desc
+
+# Paginated retired machines
+uv run htbcli machines retired-list --page 2 --per-page 50 --free
+
+# Search by name (substring match)
+uv run htbcli machines search lame
+
+# Profile by slug
+uv run htbcli machines profile lame
+
+# Tasks / guided mode for a retired machine
+uv run htbcli machines tasks lame
+uv run htbcli machines guided lame
+uv run htbcli machines guided lame --show-hints
+
+# Walkthroughs and writeups
+uv run htbcli machines walkthroughs lame
+uv run htbcli machines writeup lame
+
+# Submit a flag (active machine, by ID, by name, or via stdin)
+echo "FLAG{..}" | uv run htbcli machines submit
+uv run htbcli machines submit "FLAG{..}"
+uv run htbcli machines submit 12345 "FLAG{..}"
+uv run htbcli machines submit lame "FLAG{..}"
+
+# Submit an answer for a guided-mode task
+uv run htbcli machines submit-task lame "answer" --task 42
 ```
 
-### List First Page of Active Machines
+Available filter values for `list-machines` / `retired-list`:
+
+- `--status`: `active`, `retired`, `all`
+- `--difficulty`: `very-easy`, `easy`, `medium`, `hard`, `insane` (repeatable)
+- `--os`: `linux`, `windows`, `freebsd`, `openbsd`, `other` (repeatable)
+- `--show-completed`: `complete`, `incomplete`
+- `--sort-by`: `release-date`, `name`, `user-owns`, `system-owns`, `rating`, `user-difficulty`
+- `--sort-type`: `asc`, `desc`
+- `--free` (retired only), `--keyword`, `--tags <id>` (repeatable)
+
+### Challenges
+
 ```bash
-htbcli machines list --page 1 --per-page 10 --status active
-# or
-uv run htbcli machines list --page 1 --per-page 10 --status active
+# List with filters
+uv run htbcli challenges list-challenges --state active --difficulty medium --status incompleted --category web
+
+# Info / categories / search
+uv run htbcli challenges info my-challenge
+uv run htbcli challenges categories
+uv run htbcli challenges search reverse
+
+# Download challenge files
+uv run htbcli challenges download my-challenge -o files.zip
+
+# Start / stop challenge instance
+uv run htbcli challenges start my-challenge
+uv run htbcli challenges stop my-challenge
+uv run htbcli challenges active
+
+# Todo list
+uv run htbcli challenges todo-add my-challenge
+uv run htbcli challenges todo-remove my-challenge
+uv run htbcli challenges todo-cleanup
+
+# Submit a flag (also accepts stdin)
+uv run htbcli challenges submit my-challenge "HTB{...}"
+echo "HTB{...}" | uv run htbcli challenges submit my-challenge
 ```
 
-### Submit a Flag
+Filter values for `list-challenges`:
+
+- `--state`: `active`, `retired`, `unreleased` (repeatable)
+- `--status`: `incompleted`, `complete`
+- `--difficulty`: `very-easy`, `easy`, `medium`, `hard`, `insane` (repeatable)
+- `--category <id-or-name>` (repeatable; use `htbcli challenges categories` for IDs)
+- `--sort-by`: `release-date`, `name`, `user-owns`, `system-owns`, `rating`, `user-difficulty`
+- `--sort-type`: `asc`, `desc`
+- `--todo`, `--clean-solved`
+
+### Sherlocks
+
 ```bash
-# Submit flag to active machine (most convenient)
-echo "flag{abc123def456}" | htbcli machines submit
-htbcli machines submit "flag{abc123def456}"
+# List with filters
+uv run htbcli sherlocks list-sherlocks --difficulty easy --state active --sort-by rating --sort-type desc
 
-# Submit flag using machine ID
-htbcli machines submit 12345 "flag{abc123def456}"
+# Info / categories
+uv run htbcli sherlocks info brutus
+uv run htbcli sherlocks categories
 
-# Submit flag using machine name
-htbcli machines submit "machine-name" "flag{abc123def456}"
+# Download
+uv run htbcli sherlocks download brutus
+uv run htbcli sherlocks download brutus --link-only
+uv run htbcli sherlocks download 123 -o brutus.zip
 
-# Submit flag piped from stdin to specific machine
-echo "flag{abc123def456}" | htbcli machines submit "machine-name"
+# Play / progress / tasks
+uv run htbcli sherlocks play brutus
+uv run htbcli sherlocks progress brutus
+uv run htbcli sherlocks tasks brutus
 
-# Submit flag from environment variable to active machine
-echo $FLAG | htbcli machines submit
+# Submit flag for a specific task
+uv run htbcli sherlocks submit-flag brutus 456 "FLAG{..}"
+
+# Writeups
+uv run htbcli sherlocks writeup brutus
+uv run htbcli sherlocks writeup-official brutus
 ```
 
-### Get User Profile
+Filter values for `list-sherlocks`:
+
+- `--difficulty`: `very-easy`, `easy`, `medium`, `hard`, `insane` (repeatable)
+- `--state`: `active`, `retired`, `unreleased` (repeatable)
+- `--category <id>` (repeatable)
+- `--status`: `completed`, `incompleted`
+- `--sort-by`: `solves`, `category`, `rating`, `name`
+- `--sort-type`: `asc`, `desc`
+- `--keyword`, `--todo`
+
+### Fortresses & ProLabs
+
 ```bash
-htbcli user profile 12345
-# or
+uv run htbcli fortresses list-fortresses
+uv run htbcli fortresses info 1
+uv run htbcli fortresses flags 1
+uv run htbcli fortresses submit-flag 1 "FLAG{..}"
+uv run htbcli fortresses reset 1
+
+uv run htbcli prolabs list-prolabs
+uv run htbcli prolabs info dante
+uv run htbcli prolabs machines dante
+uv run htbcli prolabs flags dante
+uv run htbcli prolabs submit-flag dante "FLAG{..}"
+uv run htbcli prolabs progress dante
+uv run htbcli prolabs reviews dante
+```
+
+### Season
+
+```bash
+uv run htbcli season list-seasons
+uv run htbcli season machines              # current season machines
+uv run htbcli season machine-active        # active machines this season
+uv run htbcli season completed <season-id>
+uv run htbcli season rewards <season-id>
+uv run htbcli season user-rank <season-id>
+uv run htbcli season leaderboard <leaderboard-name>
+uv run htbcli season leaderboard-top <leaderboard-name> <season-id>
+uv run htbcli season end <season-id> <user-id>
+uv run htbcli season user-followers <season-id>
+```
+
+Note: there is no dedicated `season submit` command — submit seasonal-machine
+flags through `htbcli machines submit` against the active season machine.
+
+### User
+
+```bash
+uv run htbcli user info                 # your own user info
 uv run htbcli user profile 12345
+uv run htbcli user activity 12345
+uv run htbcli user bloods 12345
+uv run htbcli user badges 12345
+uv run htbcli user dashboard            # your dashboard
+uv run htbcli user dashboard-tabloid
+uv run htbcli user summary              # your summary
+uv run htbcli user progress-machines-os 12345
+uv run htbcli user progress-challenges 12345
+uv run htbcli user progress-fortress 12345
+uv run htbcli user progress-prolab 12345
+uv run htbcli user progress-sherlocks 12345
+uv run htbcli user followers            # your followers
+uv run htbcli user follow 12345
+uv run htbcli user unfollow 12345
+uv run htbcli user respect 12345
+uv run htbcli user disrespect 12345
+uv run htbcli user banned               # check if your account is banned
+uv run htbcli user settings
+uv run htbcli user apptoken-list
+uv run htbcli user achievement <target-type> <user-id> <target-id>
 ```
 
 ### VM Operations
+
 ```bash
-# Spawn a VM for machine ID 123
-htbcli vm spawn 123
-# or
-uv run htbcli vm spawn 123
+# Spawn a VM (waits up to 5 minutes by default for it to be ready)
+uv run htbcli vm spawn lame
+uv run htbcli vm spawn lame --no-wait
+uv run htbcli vm spawn lame --vpn-server 267 --max-wait 600
 
-# Extend VM time for machine ID 123
-htbcli vm extend 123
-# or
-uv run htbcli vm extend 123
+# Wait for a previously-spawned VM to come up
+uv run htbcli vm wait lame --max-wait 300
 
-# Reset VM for machine ID 123
-htbcli vm reset 123
-# or
-uv run htbcli vm reset 123
+# Extend / reset / terminate
+uv run htbcli vm extend lame
+uv run htbcli vm reset lame
+uv run htbcli vm reset lame --no-wait
+uv run htbcli vm terminate lame
 
-# Terminate VM for machine ID 123
-htbcli vm terminate 123
-# or
-uv run htbcli vm terminate 123
+# Reset voting
+uv run htbcli vm vote-reset lame
+uv run htbcli vm accept-vote lame
 
-# Vote to reset VM for machine ID 123
-htbcli vm vote-reset 123
-# or
-uv run htbcli vm vote-reset 123
-
-# Accept reset vote for machine ID 123
-htbcli vm accept-vote 123
-# or
-uv run htbcli vm accept-vote 123
+# List the VPN servers usable for spawning
+uv run htbcli vm vpn-servers
 ```
 
-### VPN Management
+`vm spawn` polls the API every 5 seconds until `isSpawning=False` and an IP is
+assigned. Use `--no-wait` to spawn-and-exit immediately.
+
+### VPN
+
+The `vpn` group is **not** subcommand-based — it's a single command driven by
+flags:
+
 ```bash
-# List available VPN servers
-htbcli vpn list
-# or
-uv run htbcli vpn list
+# List every VPN server (or filter by product)
+uv run htbcli vpn --list
+uv run htbcli vpn --list -p labs
+uv run htbcli vpn --list -p starting_point
+uv run htbcli vpn --list -p fortresses
+uv run htbcli vpn --list -p competitive
 
-# Download all VPN configurations
-htbcli vpn download
-# or
-uv run htbcli vpn download
+# Switch the assigned server (use the ID column from --list)
+uv run htbcli vpn --switch 267
 
-# List downloaded VPN files
-htbcli vpn files
-# or
-uv run htbcli vpn files
+# Download the OpenVPN config for the currently-selected server
+uv run htbcli vpn -d
+uv run htbcli vpn -d -p starting_point
 
-# Start VPN connection (requires sudo)
-htbcli vpn start "EU VIP 7" --mode udp
-# or
-uv run htbcli vpn start "EU VIP 7" --mode udp
+# List previously downloaded VPN files (stored under ~/.htbcli/vpn)
+uv run htbcli vpn --files
 
-# Stop VPN connection
-htbcli vpn stop
-# or
-uv run htbcli vpn stop
-
-# Get VPN connection status
-htbcli vpn status
-# or
-uv run htbcli vpn status
+# Start / stop a VPN tunnel (requires sudo + openvpn installed)
+uv run htbcli vpn --start --name "EU VIP 7" --mode labs
+uv run htbcli vpn --stop
 ```
 
-**Note**: VPN operations require OpenVPN to be installed and may require sudo privileges.
+Live connection status is exposed by the `connection` group:
 
-### Get VM Status
 ```bash
-# Get active machine and VM status
-htbcli machines active
-# or
-uv run htbcli machines active
-
-# Get VM status (alias)
-htbcli machines vm-status
-# or
-uv run htbcli machines vm-status
+uv run htbcli connection status                 # currently active tunnels
+uv run htbcli connection servers -p labs        # servers available for a product
+uv run htbcli connection switch 267
+uv run htbcli connection download-udp 267
+uv run htbcli connection download-tcp 267
+uv run htbcli connection product-status labs
+uv run htbcli connection prolab-servers dante
+uv run htbcli connection prolab-status dante
+uv run htbcli connection connections            # last set connections
 ```
 
-### List All Available Endpoints
+VPN start/stop requires the `openvpn` binary on your PATH and elevated
+privileges (the CLI invokes `sudo openvpn` for you).
+
+### Suspicious Activity Analysis
+
+Heuristic auditing of an HTB profile (fast user→root times, burst sessions,
+fast consecutive challenges, dormancy bursts, etc.):
+
 ```bash
-htbcli endpoints
-# or
-uv run htbcli endpoints
+uv run htbcli suspicious analyze <username-or-id>
+uv run htbcli suspicious analyze <username-or-id> --release-dates  # slow, more accurate
+uv run htbcli suspicious score <username-or-id>      # single 0-100 score
+uv run htbcli suspicious speed <username-or-id>      # only fast user→root times
+uv run htbcli suspicious bursts <username-or-id>     # burst sessions
+uv run htbcli suspicious challenges <username-or-id> # fast consecutive challenges
 ```
+
+All of the above accept `--debug` and `--json`.
+
+## Shell Completion
+
+Both bash and zsh are supported.
+
+### Quick install
+
+```bash
+# From inside the repo (uses the bundled installer)
+./install_completion.sh
+```
+
+The installer detects your shell, generates the completion script with
+`htbcli completion --shell <bash|zsh> --raw`, backs up your `~/.bashrc` /
+`~/.zshrc`, and appends the completion block.
+
+### Manual install
+
+```bash
+# Print the script
+uv run htbcli completion --shell bash         # human-readable preview
+uv run htbcli completion --shell bash --raw   # raw script (source this)
+
+# Source it for the current shell
+source <(uv run htbcli completion --shell bash --raw)
+source <(uv run htbcli completion --shell zsh --raw)
+
+# Or append to your rc file
+uv run htbcli completion --shell zsh --raw >> ~/.zshrc
+```
+
+Once installed, `htbcli <TAB>` will suggest commands, options and choice values.
+
+## Configuration directory
+
+State that the CLI writes is kept under `~/.htbcli/`:
+
+- `~/.htbcli/.env` — optional `.env` file that is always loaded, regardless
+  of your current working directory. Ideal for globally-installed binaries.
+- `~/.htbcli/vpn/` — downloaded OpenVPN config files (`.ovpn`)
 
 ## Error Handling
 
-The CLI provides clear error messages for common issues:
+- **Missing API Token** — `HTB_TOKEN environment variable not set`. Export
+  `HTB_TOKEN` in your shell, or drop a `.env` file at `~/.htbcli/.env` (or
+  in the current directory).
+- **Rate limiting** — the API client enforces a minimum 1-second gap between
+  requests automatically. Bulk operations (`--clean-solved`, large list pages)
+  may still be throttled by the upstream API.
+- **Invalid endpoint / network** — error messages include the HTTP status and
+  upstream JSON body when available; rerun with `--debug` for the raw response.
 
-- **Missing API Token**: Set the `HTB_TOKEN` environment variable
-- **Invalid Endpoint**: Check the endpoint name and parameters
-- **Network Issues**: Verify your internet connection
-- **API Errors**: Check the API response for specific error details
-
-## Development
-
-### Project Structure
+## Project Structure
 
 ```
 htbcli/
 ├── htbcli/
 │   ├── __init__.py
-│   ├── cli.py              # Main CLI entry point
-│   ├── config.py           # Configuration management
-│   ├── api_client.py       # API client
-│   ├── swagger_parser.py   # OpenAPI parser
-│   └── modules/            # API modules
-│       ├── __init__.py
+│   ├── cli.py              # Click CLI root + top-level commands
+│   ├── config.py           # HTB_TOKEN + API base URLs (loads ./.env and ~/.htbcli/.env)
+│   ├── api_client.py       # Requests wrapper with rate limiting
+│   ├── base_command.py     # Shared --debug / --json decorators
+│   ├── swagger_parser.py   # Reads the bundled openapi.v4.yaml / swagger.json
+│   ├── completion.py       # Runtime completion suggestions
+│   ├── completion_script.py # bash/zsh completion script generators
+│   └── modules/            # One file per command group
 │       ├── machines.py
 │       ├── challenges.py
-│       ├── user.py
+│       ├── sherlocks.py
+│       ├── fortresses.py
+│       ├── prolabs.py
 │       ├── season.py
-│       └── sherlocks.py
-├── requirements.txt
-├── setup.py
-├── README.md
-└── swagger.htb             # HTB API specification
+│       ├── user.py
+│       ├── team.py
+│       ├── universities.py
+│       ├── tracks.py
+│       ├── starting_point.py
+│       ├── ranking.py
+│       ├── career.py
+│       ├── badges.py
+│       ├── home.py
+│       ├── platform.py
+│       ├── pwnbox.py
+│       ├── vm.py
+│       ├── vpn.py
+│       ├── connection.py
+│       ├── review.py
+│       └── suspicious.py
+├── htbcli.py               # Convenience launcher (`python htbcli.py ...`)
+├── install_completion.sh
+├── openapi.v4.yaml         # HTB API v4 spec used by `endpoints` / `module-info`
+├── swagger.json
+├── pyproject.toml
+└── requirements.txt
 ```
 
-### Adding New Modules
+## Development
 
-1. Create a new module file in `htbcli/modules/`
-2. Define the module class with API methods
-3. Create Click commands for the module
-4. Add the module to `htbcli/modules/__init__.py`
-5. Import and add the module to `htbcli/cli.py`
+### Adding a new module
 
-### Running Tests
+1. Create a new file in `htbcli/modules/` — define an `XModule` class wrapping
+   the API endpoints and a Click `@click.group()` exporting the commands.
+2. Re-export both from `htbcli/modules/__init__.py`.
+3. Import it in `htbcli/cli.py` and call `cli.add_command(your_group)`.
+
+### Running tests
 
 ```bash
-# Install test dependencies
-uv add pytest
-
-# Run tests
+uv add --dev pytest pytest-cov
 uv run pytest
-# or
-pytest
 ```
 
 ## Contributing
@@ -661,26 +540,47 @@ pytest
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License — see the `LICENSE` file for
+details.
 
 ## Disclaimer
 
-This project is not affiliated with or endorsed by HackTheBox. It's a community-maintained tool for interacting with the HTB API.
-
-## Support
-
-If you encounter any issues or have questions:
-
-1. Check the error messages for guidance
-2. Verify your API token is correct
-3. Ensure you have the latest version
-4. Open an issue on GitHub with details about the problem
+This project is not affiliated with or endorsed by HackTheBox. It's a
+community-maintained tool for interacting with the HTB API.
 
 ## Changelog
 
+### v1.3.0
+- **Fixed `.env` auth for globally-installed users.** `Config` now also loads
+  `~/.htbcli/.env` on import, so the `.env` workflow works from any directory
+  (not just from the repo). An explicit `HTBCLI_ENV_FILE=/path/to/.env`
+  override is also supported.
+- **Single source of truth for version.** `__version__` is now read from the
+  installed package metadata, so `htbcli --version`, `pyproject.toml` and the
+  outgoing `User-Agent` header can no longer drift apart. The `User-Agent` is
+  now `HTB-CLI/<version>` instead of the hardcoded `HTB-CLI/1.0.0`.
+- **`htbcli setup` is no longer a no-op.** It creates `~/.htbcli/` and points
+  you at the exact `.env` path the CLI will load.
+- Removed the unused `CONFIG_FILE` JSON stub from `Config`.
+
+### v1.2.0
+- Added `suspicious` module for profile auditing
+- VPN module rewritten as a flag-driven command (`--list`, `--start`, `--stop`,
+  `--switch`, `-d`, `--files`)
+- New `connection` module exposing live connection state, server lists and
+  config downloads
+- VM commands now wait for VMs to be ready by default; new `vm wait`,
+  `vm vpn-servers`, and `--vpn-server` option for `vm spawn`
+- Many new machine subcommands (`guided`, `submit-task`, `search`,
+  `retired-list`, `walkthroughs`, `tasks`, `tags`, `creators`, `reviews`,
+  `recommended`, `unreleased`, `todo-list`, `owns-top`, `owns-timeline`,
+  `adventure`, etc.)
+- Challenge module gained `download`, `start`, `stop`, `active`, `categories`,
+  `todo-*`, `search`, `info`, `recommended`, `suggested`, writeups
+- Sherlock filtering split `--state` from `--status`
+- Filter values normalized to dash-case (`release-date`, `user-owns`, etc.)
+
 ### v1.0.0
-- Initial release
-- Support for Machines, Challenges, Users, Seasons, and Sherlocks modules
-- Rich CLI interface with tables and panels
-- Comprehensive error handling
-- Easy configuration setup
+- Initial release: Machines, Challenges, Users, Seasons, Sherlocks
+- Rich-formatted CLI output
+- Configuration via `HTB_TOKEN`
