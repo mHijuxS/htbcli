@@ -128,7 +128,7 @@ class MachinesModule:
         if show_completed:
             params["show_completed"] = show_completed
         if free:
-            params["free"] = "true"
+            params["free"] = 1
             
         return self.api.get("/machine/list/retired/paginated", params=params)
     
