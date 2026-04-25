@@ -15,6 +15,7 @@ class Config:
     # API Configuration
     BASE_URL_V4 = "https://labs.hackthebox.com/api/v4"
     BASE_URL_V5 = "https://labs.hackthebox.com/api/v5"
+    AVATAR_BASE_URL = "https://htb-mp-prod-public-storage.s3.eu-central-1.amazonaws.com"
     
     # Authentication
     API_TOKEN = os.getenv("HTB_TOKEN")

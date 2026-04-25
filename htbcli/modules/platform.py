@@ -10,6 +10,7 @@ from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
 from ..base_command import handle_debug_option
+from ..config import Config
 
 console = Console()
 

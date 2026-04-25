@@ -10,6 +10,7 @@ from rich.panel import Panel
 
 from ..api_client import HTBAPIClient
 from ..base_command import handle_debug_option
+from ..config import Config
 
 console = Console()
 
@@ -206,7 +207,7 @@ def profile(user_id, debug, json_output):
                 f"Points: {profile.get('points', 'N/A') or 'N/A'}\n"
                 f"Country: {profile.get('country_name', 'N/A') or 'N/A'}\n"
                 f"Member Since: {profile.get('member_since', 'N/A') or 'N/A'}\n"
-                f"Avatar: {profile.get('avatar', 'N/A') or 'N/A'}",
+                f"Avatar: {(Config.AVATAR_BASE_URL + profile['avatar']) if profile.get('avatar') else 'N/A'}",
                 title=f"User ID: {user_id}"
             ))
         else:

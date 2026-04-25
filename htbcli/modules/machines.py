@@ -15,6 +15,7 @@ from rich.progress_bar import ProgressBar
 
 from ..api_client import HTBAPIClient
 from ..base_command import handle_debug_option
+from ..config import Config
 from .vpn import VPNModule
 
 console = Console()
@@ -662,7 +663,7 @@ def creators(machine_identifier, debug, json_output):
                     table.add_row(
                         str(creator.get('id', 'N/A') or 'N/A'),
                         str(creator.get('name', 'N/A') or 'N/A'),
-                        str(creator.get('avatar', 'N/A') or 'N/A'),
+                        (Config.AVATAR_BASE_URL + creator['avatar']) if creator.get('avatar') else 'N/A',
                         str(creator.get('isRespected', 'N/A') or 'N/A')
                     )
                 
@@ -922,7 +923,10 @@ def profile(machine_slug, responses, option):
                 selected_info = {}
                 for field in option:
                     if field in info:
-                        selected_info[field] = info[field]
+                        value = info[field]
+                        if field == 'avatar' and value:
+                            value = Config.AVATAR_BASE_URL + value
+                        selected_info[field] = value
                     else:
                         console.print(f"[yellow]Field '{field}' not found in response[/yellow]")
                 
