@@ -14,6 +14,26 @@ from ..config import Config
 
 console = Console()
 
+_CHALLENGE_CATEGORY_CACHE: Optional[Dict[int, str]] = None
+
+
+def _get_challenge_category_map(api_client: HTBAPIClient) -> Dict[int, str]:
+    """Return a {id: name} map for challenge categories, cached per process."""
+    global _CHALLENGE_CATEGORY_CACHE
+    if _CHALLENGE_CATEGORY_CACHE is not None:
+        return _CHALLENGE_CATEGORY_CACHE
+    try:
+        from .challenges import ChallengesModule
+        result = ChallengesModule(api_client).get_challenge_categories_list()
+        categories = (result or {}).get('data') or (result or {}).get('info') or []
+        _CHALLENGE_CATEGORY_CACHE = {
+            c.get('id'): c.get('name') for c in categories if c.get('id') is not None and c.get('name')
+        }
+    except Exception:
+        _CHALLENGE_CATEGORY_CACHE = {}
+    return _CHALLENGE_CATEGORY_CACHE
+
+
 class PlatformModule:
     """Module for handling platform-related API calls"""
     
@@ -449,20 +469,18 @@ def search(query, tags):
                 table = Table(title=f"Challenges - Search Results for '{query}'")
                 table.add_column("ID", style="cyan")
                 table.add_column("Name", style="green")
-                table.add_column("Category ID", style="yellow")
-                table.add_column("Description", style="magenta")
-                
+                table.add_column("Category", style="yellow")
+
+                category_map = _get_challenge_category_map(api_client)
+
                 for challenge in result['challenges']:
-                    # Truncate description if too long
-                    description = challenge.get('description', 'N/A') or 'N/A'
-                    if len(description) > 50:
-                        description = description[:47] + "..."
-                    
+                    cat_id = challenge.get('challenge_category_id')
+                    category_name = category_map.get(cat_id, str(cat_id) if cat_id is not None else 'N/A')
+
                     table.add_row(
                         str(challenge.get('id', 'N/A') or 'N/A'),
                         str(challenge.get('value', 'N/A') or 'N/A'),
-                        str(challenge.get('challenge_category_id', 'N/A') or 'N/A'),
-                        description
+                        category_name
                     )
                 console.print(table)
             
