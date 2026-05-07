@@ -579,6 +579,10 @@ community-maintained tool for interacting with the HTB API.
 
 ## Changelog
 
+### v1.4.1
+- Added `LICENSE` file (MIT). The license was already declared in
+  `pyproject.toml`, but the actual license text was missing from the repo.
+
 ### v1.4.0
 - **New `academyxlabs` group.** Wraps the public
   `academy.hackthebox.com/api/v2/external/public/labs/...` endpoints behind
