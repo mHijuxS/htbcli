@@ -24,6 +24,7 @@ from .universities import universities, UniversitiesModule
 from .vm import vm, VMModule
 from .vpn import vpn, VPNModule
 from .suspicious import suspicious, SuspiciousModule
+from .academyxlabs import academyxlabs, AcademyXLabsModule
 
 __all__ = [
     'machines', 'MachinesModule',
@@ -48,4 +49,5 @@ __all__ = [
     'vm', 'VMModule',
     'vpn', 'VPNModule',
     'suspicious', 'SuspiciousModule',
+    'academyxlabs', 'AcademyXLabsModule',
 ]

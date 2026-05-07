@@ -18,7 +18,7 @@ from .modules import (
     badges, career, connection, fortresses, home,
     platform, prolabs, pwnbox, ranking, review,
     starting_point, team, tracks, universities, vm, vpn,
-    suspicious,
+    suspicious, academyxlabs,
 )
 
 console = Console()
@@ -64,6 +64,7 @@ cli.add_command(universities)
 cli.add_command(vm)
 cli.add_command(vpn)
 cli.add_command(suspicious)
+cli.add_command(academyxlabs)
 
 @cli.command()
 def info():

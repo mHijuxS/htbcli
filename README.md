@@ -125,6 +125,7 @@ uv run htbcli completion --shell zsh # generate shell completion script
 | `connection` | Current connections, server lists, switch, download UDP/TCP, prolab status |
 | `review` | Mark a review helpful / unhelpful |
 | `suspicious` | Profile-audit heuristics (analyze, score, speed, bursts, challenges) |
+| `academyxlabs` | Academy ↔ Labs relations (modules, machines, exams, fortresses, prolabs, sherlocks) |
 
 Discover everything with `uv run htbcli <group> --help`.
 
@@ -419,6 +420,34 @@ uv run htbcli suspicious challenges <username-or-id> # fast consecutive challeng
 
 All of the above accept `--debug` and `--json`.
 
+### Academy ↔ Labs relations
+
+Mirrors the dropdown on
+[academy.hackthebox.com/academy-lab-relations](https://academy.hackthebox.com/academy-lab-relations):
+pick any item from one of six categories (modules, machines, exams, fortresses,
+prolabs, sherlocks) and see the related items in every other category. The
+endpoints are public and unauthenticated, so this works without an HTB token.
+
+```bash
+# Quick lookup by category flag — accepts ID, slug, or (unique) name substring
+uv run htbcli academyxlabs -m 'introduction to nosql injection'  # module -> 5 machines
+uv run htbcli academyxlabs -M Mango                              # machine -> modules
+uv run htbcli academyxlabs -e htb-certified-penetration-testing-specialist
+uv run htbcli academyxlabs -f Jet                                # fortress
+uv run htbcli academyxlabs -p RastaLabs                          # prolab
+uv run htbcli academyxlabs -s Meerkat                            # sherlock
+
+# Browse a whole category
+uv run htbcli academyxlabs list modules
+uv run htbcli academyxlabs list machines
+
+# Explicit form (same effect as the flags above)
+uv run htbcli academyxlabs relations modules introduction-to-nosql-injection
+uv run htbcli academyxlabs relations machines 523
+
+uv run htbcli academyxlabs categories                            # show flag table
+```
+
 ## Shell Completion
 
 Both bash and zsh are supported.
@@ -549,6 +578,13 @@ This project is not affiliated with or endorsed by HackTheBox. It's a
 community-maintained tool for interacting with the HTB API.
 
 ## Changelog
+
+### v1.4.0
+- **New `academyxlabs` group.** Wraps the public
+  `academy.hackthebox.com/api/v2/external/public/labs/...` endpoints behind
+  the Academy x Labs relations page. Lookup any module / machine / exam /
+  fortress / prolab / sherlock by ID, slug, or name and get every related
+  item in every other category. No HTB token required.
 
 ### v1.3.0
 - **Fixed `.env` auth for globally-installed users.** `Config` now also loads
