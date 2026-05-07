@@ -47,6 +47,14 @@ class SeasonModule:
         """Get top season users and top ranked followers for a user"""
         return self.api.get(f"/season/user/followers/{season_id}")
     
+    def get_latest_season_id(self) -> Optional[int]:
+        """Get the ID of the most recent season"""
+        result = self.get_season_list()
+        seasons = result.get('data', []) if result else []
+        if not seasons:
+            return None
+        return seasons[-1].get('id')
+
     def get_season_user_rank(self, season_id: int) -> Dict[str, Any]:
         """Get user's rank for the current season"""
         return self.api.get(f"/season/user/rank/{season_id}")
@@ -230,25 +238,26 @@ def machine_active(responses, option):
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
 @click.option('--count-only', is_flag=True, help='Show only the count of machines')
-def machines(responses, option, count_only):
+@click.option('--exclude-unknown', is_flag=True, help='Exclude machines with unknown status')
+def machines(responses, option, count_only, exclude_unknown):
     """Get season machines"""
     try:
         api_client = HTBAPIClient()
         season_module = SeasonModule(api_client)
         result = season_module.get_season_machines()
-        
+
         if result:
             if responses:
-                # Show all available fields
                 console.print(Panel.fit(
                     f"[bold green]All Season Machines Data[/bold green]\n"
                     f"{result}",
                     title="Season Machines"
                 ))
             elif option:
-                # Show default table with additional specified fields
                 if 'data' in result:
                     machines_data = result['data']
+                    if exclude_unknown:
+                        machines_data = [m for m in machines_data if not m.get('unknown', False)]
                     if isinstance(machines_data, list) and machines_data:
                         table = Table(title="Season Machines")
                         table.add_column("Name", style="green")
@@ -256,38 +265,31 @@ def machines(responses, option, count_only):
                         table.add_column("Rooted", style="cyan")
                         table.add_column("OS", style="magenta")
                         table.add_column("Points", style="blue")
-                        
-                        # Add additional columns for specified fields
+
                         for field in option:
                             table.add_column(field.title(), style="green")
-                        
+
                         for machine in machines_data:
-                            # Default row data
                             name = str(machine.get('name', 'N/A') or 'N/A')
                             difficulty = str(machine.get('difficulty_text', 'N/A') or 'N/A')
-                            is_owned_root = machine.get('is_owned_root', False)
-                            rooted = "Yes" if is_owned_root else "No"
+                            rooted = "Yes" if machine.get('is_owned_root', False) else "No"
                             os = str(machine.get('os', 'N/A') or 'N/A')
                             points = str(machine.get('root_points', 'N/A') or 'N/A')
-                            
-                            # Start with default columns
                             row = [name, difficulty, rooted, os, points]
-                            
-                            # Add additional specified fields
                             for field in option:
                                 row.append(str(machine.get(field, 'N/A') or 'N/A'))
-                            
                             table.add_row(*row)
-                        
+
                         console.print(table)
                     else:
                         console.print("[yellow]No machines data available[/yellow]")
                 else:
                     console.print("[yellow]No machines data found[/yellow]")
             elif count_only:
-                # Show only count
                 if 'data' in result:
                     machines_data = result['data']
+                    if exclude_unknown:
+                        machines_data = [m for m in machines_data if not m.get('unknown', False)]
                     count = len(machines_data) if isinstance(machines_data, list) else 'N/A'
                     console.print(Panel.fit(
                         f"[bold green]Season Machines[/bold green]\n"
@@ -301,27 +303,29 @@ def machines(responses, option, count_only):
                         title="Season Machines"
                     ))
             else:
-                # Show machines in table format
                 if 'data' in result:
                     machines_data = result['data']
+                    if exclude_unknown:
+                        machines_data = [m for m in machines_data if not m.get('unknown', False)]
                     if isinstance(machines_data, list) and machines_data:
                         table = Table(title="Season Machines")
+                        table.add_column("ID", style="cyan")
                         table.add_column("Name", style="green")
                         table.add_column("Difficulty", style="yellow")
                         table.add_column("Rooted", style="cyan")
                         table.add_column("OS", style="magenta")
                         table.add_column("Points", style="blue")
-                        
+
                         for machine in machines_data:
-                            name = str(machine.get('name', 'N/A') or 'N/A')
-                            difficulty = str(machine.get('difficulty_text', 'N/A') or 'N/A')
-                            is_owned_root = machine.get('is_owned_root', False)
-                            rooted = "Yes" if is_owned_root else "No"
-                            os = str(machine.get('os', 'N/A') or 'N/A')
-                            points = str(machine.get('root_points', 'N/A') or 'N/A')
-                            
-                            table.add_row(name, difficulty, rooted, os, points)
-                        
+                            table.add_row(
+                                str(machine.get('id', 'N/A') or 'N/A'),
+                                str(machine.get('name', 'N/A') or 'N/A'),
+                                str(machine.get('difficulty_text', 'N/A') or 'N/A'),
+                                "Yes" if machine.get('is_owned_root', False) else "No",
+                                str(machine.get('os', 'N/A') or 'N/A'),
+                                str(machine.get('root_points', 'N/A') or 'N/A'),
+                            )
+
                         console.print(table)
                     else:
                         console.print("[yellow]No machines data available[/yellow]")
@@ -524,46 +528,60 @@ def user_followers(season_id, responses, option):
         console.print(f"[red]Error: {e}[/red]")
 
 @season.command()
-@click.argument('season_id', type=int)
+@click.argument('season_id', type=int, required=False)
+@click.option('--current', is_flag=True, help='Use the latest season automatically')
 @click.option('--responses', is_flag=True, help='Show all available response fields')
 @click.option('-o', '--option', multiple=True, help='Show specific field(s) (can be used multiple times)')
-def user_rank(season_id, responses, option):
-    """Get user's rank for the current season"""
+def user_rank(season_id, current, responses, option):
+    """Get user's rank for a season (use --current for the latest season)"""
     try:
         api_client = HTBAPIClient()
         season_module = SeasonModule(api_client)
-        result = season_module.get_season_user_rank(season_id)
-        
+
+        if current:
+            resolved_id = season_module.get_latest_season_id()
+            if resolved_id is None:
+                console.print("[red]Could not resolve the current season ID[/red]")
+                return
+        elif season_id is not None:
+            resolved_id = season_id
+        else:
+            console.print("[red]Provide a SEASON_ID or use --current[/red]")
+            return
+
+        result = season_module.get_season_user_rank(resolved_id)
+
         if result:
             if responses:
-                # Show all available fields
                 console.print(Panel.fit(
                     f"[bold green]All User Rank Data[/bold green]\n"
                     f"{result}",
-                    title=f"Season {season_id} User Rank"
+                    title=f"Season {resolved_id} User Rank"
                 ))
             elif option:
-                # Show specific fields
                 info_text = f"[bold green]User Rank[/bold green]\n"
                 for field in option:
                     value = result.get(field, 'N/A')
                     info_text += f"{field}: {value}\n"
-                console.print(Panel.fit(info_text, title=f"Season {season_id} User Rank"))
+                console.print(Panel.fit(info_text, title=f"Season {resolved_id} User Rank"))
             else:
-                # Show default fields
                 if 'data' in result:
                     rank_data = result['data']
+                    flags = rank_data.get('flags_to_next_rank', {}) or {}
+                    flags_total = rank_data.get('flags_to_next_rank_total', {}) or {}
                     console.print(Panel.fit(
                         f"[bold green]User Rank[/bold green]\n"
-                        f"Season ID: {season_id}\n"
-                        f"Rank: {rank_data.get('rank', 'N/A') or 'N/A'}",
-                        title=f"Season {season_id} User Rank"
+                        f"Season ID: {resolved_id}\n"
+                        f"Rank: {rank_data.get('rank', 'N/A') or 'N/A'}\n"
+                        f"League: {rank_data.get('league', 'N/A') or 'N/A'}\n"
+                        f"Flags to next rank: {flags.get('total', 'N/A')} (obtained: {flags_total.get('obtained', 'N/A')})",
+                        title=f"Season {resolved_id} User Rank"
                     ))
                 else:
                     console.print(Panel.fit(
                         f"[bold green]User Rank[/bold green]\n"
                         f"Status: {result.get('status', 'N/A') or 'N/A'}",
-                        title=f"Season {season_id} User Rank"
+                        title=f"Season {resolved_id} User Rank"
                     ))
         else:
             console.print("[yellow]No user rank found[/yellow]")
