@@ -230,23 +230,36 @@ def activity(user_id, debug, json_output):
         if handle_debug_option(debug, result, f"Debug: User Activity API Response (ID: {user_id}, json_output)"):
             return
         
-        if result and 'data' in result:
-            activity_data = result['data']
-            
+        activity_data = None
+        if result:
+            activity_data = (result.get('profile') or {}).get('activity') or result.get('data')
+
+        if activity_data:
             table = Table(title=f"User Activity (ID: {user_id})")
             table.add_column("Type", style="cyan")
+            table.add_column("Object", style="blue")
             table.add_column("Name", style="green")
+            table.add_column("Category", style="white")
             table.add_column("Date", style="yellow")
             table.add_column("Points", style="magenta")
-            
+            table.add_column("Blood", style="red")
+
             for activity in activity_data:
+                category = activity.get('challenge_category') or ''
+                first_blood = '🩸' if activity.get('first_blood') else ''
+                date = activity.get('date') or activity.get('date_diff') or 'N/A'
+                if isinstance(date, str) and 'T' in date:
+                    date = date.replace('T', ' ').split('.')[0]
                 table.add_row(
                     str(activity.get('type', 'N/A') or 'N/A'),
+                    str(activity.get('object_type', '') or ''),
                     str(activity.get('name', 'N/A') or 'N/A'),
-                    str(activity.get('date', 'N/A') or 'N/A'),
-                    str(activity.get('points', 'N/A') or 'N/A')
+                    str(category),
+                    str(date),
+                    str(activity.get('points', 'N/A') or 'N/A'),
+                    first_blood,
                 )
-            
+
             console.print(table)
         else:
             console.print("[yellow]No activity found[/yellow]")
